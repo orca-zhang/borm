@@ -1,14 +1,53 @@
+
+### BORM
+
+[![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/borm/blob/master/LICENSE)
+
+- 📺 [WIP] borm is a beautiful orm library in Go.
+
+### 背景
+
+golang写SQL太耗时间了，花了几天写了一个golang版的ORM库
+基本参照在cpp版borm进行复刻（暂未开源）
+
+解决核心痛点：
+1. 手撸SQL，组装数据太花时间
+2. 手撸难免SQL容易有语法错误
+3. time.Time无法直接读写的问题
+4. SQL函数结果无法直接Scan
+5. db操作无法方便的Mock
+6. QueryRow的sql.ErrNoRows问题
+7. 直接替换系统自带Scanner，完整接管数据读取的类型转换
+8. 目前暂未开始优化，benchmark显示性能和原生database/sql接近
+
+横向对比：
+1. 其他orm库：需要指定数据库字段类型，需要显示指定Model，链式调用
+borm：all-in-one，单函数调用，参数直接传递你喜欢的“对象/map/对象数组/对象指针数组/任意数据类型”（便于mock）
+2. 使用reflect2，零使用ValueOf，并尽量少使用临时对象保证尽可能少的性能损耗和额外内存使用
+3. SQL-Like，无学习成本，不暴露SQL语句，尽最大可能避免语法问题的心智负担
+4. 【**】支持自mock，内建低成本支持mock，无需外部库支持
+
+TODO：
+1. 自动规整sql语法（条件可以无序传入）
+2. 支持复用sql和存储方式，根据代码位置复用（参考json-iterator的binding实现）
+3. Select存储到map
+4. Insert从map读
+5. Insert/Update支持非指针类型
+6. 自动处理where条件优先级（Or的处理）
+7. Benchmark报告
+
+大致的demo（更多先可以看ut用例）：
 ``` golang
 count, err := t.Select(&mtime,
 Where(Gt(`mtime`, m)),
-OrderBy(`mtime` desc),
+OrderBy("`mtime` desc"),
 Limit(1)))
 
 count, err := t.Select(&mtime,
 Fields("mtime"),
 Where(Gt("mtime", m)),
-GroupBy("foo,bar"),
-OrderBy(`mtime` desc),
+GroupBy("foo", "bar"),
+OrderBy("`mtime` desc"),
 Limit(0, 100))
 ```
 
@@ -20,14 +59,14 @@ Limit(0, 100))
 - 可测：支持自mock（因为参数作返回值，大部分mock框架不支持）
   - 非测试向的library不是好library
 
-1. [x]【易用】支持不同类型自动转换，数值&字符串&byte数组&时间
+1. ✔【易用】支持不同类型自动转换，数值&字符串&byte数组&时间
 
-2. [x]【易用】支持slice & map直接In操作
+2. ✔【易用】支持slice & map直接In操作
 - map需要指定path和field
 
-3. [x]【易用】sql.ErrNoRows处理成count为0
+3. ✔【易用】sql.ErrNoRows处理成count为0
 
-4. [x]【安全】自动防注入
+4. ✔【安全】自动防注入
 
 5. 【语法】自动处理表达式优先级
 - 默认是逻辑`与`，逻辑`或`需要显式使用Or
@@ -42,7 +81,7 @@ Where(Or(c, c, c))
 > "where c or c or c"
 ```
 
-6. [-]【语法】自动转义字段
+6. ✔【语法】自动转义字段
 
 7. 【语法】自动规整sql语法
 - 条件可以无序传入
@@ -57,19 +96,19 @@ Where(Or(c, c, c))
 - column和struct&pb中字段index对应关系
 - 以及需要类型转换的转换函数
 
-10. [x]【性能】使用reflect2保证性能
+10. ✔【性能】使用reflect2保证性能
 
 11. 【测试】支持自mock
 - 强制检查是否在*_test.go文件内开启
 
-12. [-]【增强】全局和表级开关配置：
+12. ✔【增强】全局和表级开关配置：
 - 是否复用sql
 - 是否调试模式，输出日志
 - 是否加下划线（去除驼峰开启后生效）
 - 是否去除驼峰
 - 是否开启mock
 
-13. [x]【增强】关于Fields
+13. ✔【增强】关于Fields
 
 |struct|map|pb|基本类型|
 |-|-|-|-|
