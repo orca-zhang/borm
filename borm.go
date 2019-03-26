@@ -80,6 +80,12 @@ func Table(db dbIFace, name string) *table {
 	}
 }
 
+// Reuse .
+func (t *table) Reuse() *table {
+	t.Cfg.Reuse = true
+	return t
+}
+
 // Debug .
 func (t *table) Debug() *table {
 	t.Cfg.Debug = true
@@ -147,7 +153,7 @@ func Limit(i ...interface{}) *limitItem {
 	case 1, 2:
 		return &limitItem{I: i}
 	}
-	panic("too few or too many limitation params")
+	panic("too few or too many limit params")
 }
 
 // OnDuplicateKeyUpdate .
@@ -157,19 +163,17 @@ func OnDuplicateKeyUpdate(keyVals map[string]interface{}) *onDuplicateKeyUpdateI
 
 func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}) (int, error) {
 	if len(args) <= 0 {
-		return 0, errors.New("Argument 3 cannot be omitted.")
+		return 0, errors.New("Argument 3 cannot be omited.")
 	}
 
 	var (
+		rt         = reflect2.TypeOf(res)
 		isArray    bool
 		isPtrArray bool
+		rtElem     = rt
 
-		rt     = reflect2.TypeOf(res)
-		rtElem = rt
-
-		sb   strings.Builder
-		cols []interface{}
-		elem interface{}
+		item *DataBindingItem
+		stmtArgs []interface{}
 	)
 
 	switch rt.Kind() {
@@ -188,7 +192,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 	case reflect.Map:
 		// TODO
 	default:
-		return 0, errors.New("Argument 2 should be map or pointer.")
+		return 0, errors.New("Argument 2 should be map or ptr.")
 	}
 
 	if config.Mock {
@@ -199,97 +203,130 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 		}
 	}
 
-	sb.WriteString("select ")
-
-	// struct类型
-	if rtElem.Kind() == reflect.Struct {
-		s := rtElem.(reflect2.StructType)
-		if isArray {
-			elem = rtElem.New()
-		} else {
-			elem = res
-		}
-
-		if args[0].(ormItem).Type() == _fields {
-			m := t.getStructFieldMap(s)
-
-			for _, field := range args[0].(*fieldsItem).Fields {
-				f := m[field]
-				cols = append(cols, &scanner{
-					Type: f.Type(),
-					Val:  f.Get(elem),
-				})
-			}
-
-			(args[0]).(ormItem).BuildSQL(&sb)
-			args = args[1:]
-
-		} else {
-			for i := 0; i < s.NumField(); i++ {
-				f := s.Field(i)
-				ft := f.Tag().Get("borm")
-
-				if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
-					continue
-				}
-
-				if len(cols) > 0 {
-					sb.WriteString(",")
-				}
-
-				if ft == "" {
-					fieldEscape(&sb, f.Name())
-				} else {
-					fieldEscape(&sb, ft)
-				}
-
-				cols = append(cols, &scanner{
-					Type: f.Type(),
-					Val:  f.Get(elem),
-				})
-			}
-		}
-		// map类型
-	} else if rt.Kind() == reflect.Map {
-		// TODO
-		// 其他类型
-	} else {
-		// 必须有fields且为1
-		if args[0].(ormItem).Type() != _fields {
-			return 0, errors.New("Argument 3 need ONE Fields(\"name\") with ONE field.")
-		}
-
-		fi := args[0].(*fieldsItem)
-		if len(fi.Fields) < 1 {
-			return 0, errors.New("Too few fields.")
-		}
-
-		cols = append(cols, &scanner{
-			Type: rtElem,
-			Val:  res,
-		})
-
-		fieldEscape(&sb, fi.Fields[0])
-		args = args[1:]
+	if t.Cfg.Reuse {
+		_, fileName, line, _ := runtime.Caller(1)
+		item = loadFromCache(fileName, line)
 	}
 
-	sb.WriteString(" from ")
+	if item != nil {
+		// struct类型
+		if rtElem.Kind() == reflect.Struct {
+			if args[0].(ormItem).Type() == _fields {
+				args = args[1:]
+			}
+			// map类型
+		} else if rt.Kind() == reflect.Map {
+			// TODO
+			// 其他类型
+		} else {
+			args = args[1:]
+		}
+	
+		for _, arg := range args {
+			(arg).(ormItem).BuildArgs(&stmtArgs)
+		}
+	} else {
+		item = &DataBindingItem{Type: rtElem}
 
-	fieldEscape(&sb, t.Name)
+		var sb strings.Builder
+		sb.WriteString("select ")
 
-	var stmtArgs []interface{}
-	for _, arg := range args {
-		(arg).(ormItem).BuildSQL(&sb)
-		(arg).(ormItem).BuildArgs(&stmtArgs)
+		// struct类型
+		if rtElem.Kind() == reflect.Struct {
+			s := rtElem.(reflect2.StructType)
+			if isArray {
+				item.Elem = rtElem.New()
+			} else {
+				item.Elem = res
+			}
+
+			if args[0].(ormItem).Type() == _fields {
+				m := t.getStructFieldMap(s)
+
+				for _, field := range args[0].(*fieldsItem).Fields {
+					f := m[field]
+					item.Cols = append(item.Cols, &scanner{
+						Type: f.Type(),
+						Val:  f.UnsafeGet(reflect2.PtrOf(item.Elem)),
+					})
+				}
+
+				(args[0]).(ormItem).BuildSQL(&sb)
+				args = args[1:]
+
+			} else {
+				for i := 0; i < s.NumField(); i++ {
+					f := s.Field(i)
+					ft := f.Tag().Get("borm")
+
+					if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
+						continue
+					}
+
+					if len(item.Cols) > 0 {
+						sb.WriteString(",")
+					}
+
+					if ft == "" {
+						fieldEscape(&sb, f.Name())
+					} else {
+						fieldEscape(&sb, ft)
+					}
+
+					item.Cols = append(item.Cols, &scanner{
+						Type: f.Type(),
+						Val:  f.UnsafeGet(reflect2.PtrOf(item.Elem)),
+					})
+				}
+			}
+			// map类型
+		} else if rt.Kind() == reflect.Map {
+			// TODO
+			// 其他类型
+		} else {
+			// 必须有fields且为1
+			if args[0].(ormItem).Type() != _fields {
+				return 0, errors.New("Argument 3 need ONE Fields(\"name\") with ONE field.")
+			}
+
+			fi := args[0].(*fieldsItem)
+			if len(fi.Fields) < 1 {
+				return 0, errors.New("Too few fields.")
+			}
+
+			item.Cols = append(item.Cols, &scanner{
+				Type: rtElem,
+				Val:  unsafe.Pointer(&res),
+			})
+
+			fieldEscape(&sb, fi.Fields[0])
+			args = args[1:]
+		}
+
+		sb.WriteString(" from ")
+
+		fieldEscape(&sb, t.Name)
+	
+		for _, arg := range args {
+			(arg).(ormItem).BuildSQL(&sb)
+			(arg).(ormItem).BuildArgs(&stmtArgs)
+		}
+
+		item.SQL = sb.String()
+
+		if t.Cfg.Reuse {
+			_, fileName, line, _ := runtime.Caller(1)
+			storeToCache(fileName, line, item)
+		}
 	}
 
 	if t.Cfg.Debug {
-		log.Println(sb.String(), stmtArgs)
+		log.Println(item.SQL, stmtArgs)
 	}
 
 	if !isArray {
 		// fire
-		err := t.DB.QueryRowContext(ctx, sb.String(), stmtArgs...).Scan(cols...)
+		err := t.DB.QueryRowContext(ctx, item.SQL, stmtArgs...).Scan(item.Cols...)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return 0, nil
@@ -300,24 +337,24 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 	}
 
 	// fire
-	rows, err := t.DB.QueryContext(ctx, sb.String(), stmtArgs...)
+	rows, err := t.DB.QueryContext(ctx, item.SQL, stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
 
 	count := 0
 	for rows.Next() {
-		err = rows.Scan(cols...)
+		err = rows.Scan(item.Cols...)
 		if err != nil {
 			break
 		}
 
 		if isPtrArray {
 			copyElem := rtElem.UnsafeNew()
-			rtElem.UnsafeSet(copyElem, reflect2.PtrOf(elem))
+			rtElem.UnsafeSet(copyElem, reflect2.PtrOf(item.Elem))
 			rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), unsafe.Pointer(&copyElem))
 		} else {
-			rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), reflect2.PtrOf(elem))
+			rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), reflect2.PtrOf(item.Elem))
 		}
 		count++
 	}
@@ -334,12 +371,11 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...interface{
 	}
 
 	var (
+		rt         = reflect2.TypeOf(objs)
 		isArray    bool
 		isPtrArray bool
-
-		rt     = reflect2.TypeOf(objs)
-		rtPtr  reflect2.Type
-		rtElem = rt
+		rtPtr      reflect2.Type
+		rtElem     = rt
 
 		sb       strings.Builder
 		stmtArgs []interface{}
@@ -377,7 +413,7 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...interface{
 	case reflect.Map:
 		// TODO
 	default:
-		return 0, errors.New("Argument 2 should be map or pointer.")
+		return 0, errors.New("Argument 2 should be map or ptr.")
 	}
 
 	// Fields or None
@@ -485,7 +521,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 	}
 
 	if len(args) <= 0 {
-		return 0, errors.New("Argument 3 cannot be omitted.")
+		return 0, errors.New("Argument 3 cannot be omited.")
 	}
 
 	var sb strings.Builder
@@ -530,7 +566,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 		case reflect.Map:
 			// TODO
 		default:
-			return 0, errors.New("Argument 2 should be map or pointer.")
+			return 0, errors.New("Argument 2 should be map or ptr.")
 		}
 
 		var cols []reflect2.StructField
@@ -810,18 +846,47 @@ func (w *groupByItem) BuildSQL(sb *strings.Builder) {
 func (w *groupByItem) BuildArgs(stmtArgs *[]interface{}) {
 }
 
+type havingItem struct {
+	Conds []interface{}
+}
+
+func (h *havingItem) Type() int {
+	return _having
+}
+
+func (h *havingItem) BuildSQL(sb *strings.Builder) {
+	sb.WriteString(" having ")
+	for i, c := range h.Conds {
+		if i > 0 {
+			sb.WriteString(" and ")
+		}
+		if cond, ok := c.(*ormCond); ok {
+			fieldEscape(sb, cond.Field)
+			sb.WriteString(cond.Op)
+		}
+	}
+}
+
+func (h *havingItem) BuildArgs(stmtArgs *[]interface{}) {
+	for _, c := range h.Conds {
+		if cond, ok := c.(*ormCond); ok {
+			*stmtArgs = append(*stmtArgs, cond.Args...)
+		}
+	}
+}
+
 type orderByItem struct {
 	Orders []string
 }
 
-func (w *orderByItem) Type() int {
+func (o *orderByItem) Type() int {
 	return _orderBy
 }
 
-func (w *orderByItem) BuildSQL(sb *strings.Builder) {
+func (o *orderByItem) BuildSQL(sb *strings.Builder) {
 	sb.WriteString(" order by ")
 
-	for i, order := range w.Orders {
+	for i, order := range o.Orders {
 		if i > 0 {
 			sb.WriteString(",")
 		}
@@ -830,26 +895,26 @@ func (w *orderByItem) BuildSQL(sb *strings.Builder) {
 	}
 }
 
-func (w *orderByItem) BuildArgs(stmtArgs *[]interface{}) {
+func (o *orderByItem) BuildArgs(stmtArgs *[]interface{}) {
 }
 
 type limitItem struct {
 	I []interface{}
 }
 
-func (w *limitItem) Type() int {
+func (l *limitItem) Type() int {
 	return _limit
 }
 
-func (w *limitItem) BuildSQL(sb *strings.Builder) {
+func (l *limitItem) BuildSQL(sb *strings.Builder) {
 	sb.WriteString(" limit ?")
-	if len(w.I) > 1 {
+	if len(l.I) > 1 {
 		sb.WriteString(",?")
 	}
 }
 
-func (w *limitItem) BuildArgs(stmtArgs *[]interface{}) {
-	*stmtArgs = append(*stmtArgs, w.I...)
+func (l *limitItem) BuildArgs(stmtArgs *[]interface{}) {
+	*stmtArgs = append(*stmtArgs, l.I...)
 }
 
 func strconvErr(err error) error {
@@ -861,7 +926,7 @@ func strconvErr(err error) error {
 
 type scanner struct {
 	Type reflect2.Type
-	Val  interface{}
+	Val  unsafe.Pointer
 }
 
 func isTimeFormat(s string) bool {
@@ -896,42 +961,56 @@ func numberToString(k reflect.Kind, src interface{}) string {
 	return ""
 }
 
-func scanFromString(pt *time.Time, isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsafe.Pointer, tmp string) error {
+func toUnix(year, month, day, hour, min, sec int) int64 {
+	if month < 1 || month > 12 {
+		return -1
+	}
+
+	leap := 0
+	if (year%4 == 0 && (year%100 != 0 || year%400 == 0)) && month >= 3 {
+		leap = 1 // February 29
+	}
+
+	return int64((365*year - 719528 + day - 1 + (year+3)/4 - (year+99)/100 + (year+399)/400 + int([]int{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}[month-1]) + leap) * 86400 + hour * 3600 + min * 60 + sec)
+}
+
+func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsafe.Pointer, tmp string) error {
 	dk := dt.Kind()
 
 	// 时间格式(DATE/DATETIME) => number
 	if (isTime || (dk >= reflect.Int && dk <= reflect.Float64)) && isTimeFormat(tmp) {
-		layout := _timeLayout[0:len(tmp)]
+		var year, month, day, hour, min, sec int
+		fmt.Sscanf(tmp, "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &min, &sec)
 		if isTime {
-			*pt, _ = time.Parse(layout, tmp)
+			*(*time.Time)(ptrVal) = time.Unix(toUnix(year, month, day, hour, min, sec), 0)
 			return nil
 		}
-		t, _ := time.Parse(layout, tmp)
+		ts := toUnix(year, month, day, hour, min, sec)
 		switch dk {
 		case reflect.Int:
-			*(*int)(ptrVal) = int(t.Unix())
+			*(*int)(ptrVal) = int(ts)
 		case reflect.Int8:
-			*(*int8)(ptrVal) = int8(t.Unix())
+			*(*int8)(ptrVal) = int8(ts)
 		case reflect.Int16:
-			*(*int16)(ptrVal) = int16(t.Unix())
+			*(*int16)(ptrVal) = int16(ts)
 		case reflect.Int32:
-			*(*int32)(ptrVal) = int32(t.Unix())
+			*(*int32)(ptrVal) = int32(ts)
 		case reflect.Int64:
-			*(*int64)(ptrVal) = t.Unix()
+			*(*int64)(ptrVal) = ts
 		case reflect.Uint:
-			*(*uint)(ptrVal) = uint(t.Unix())
+			*(*uint)(ptrVal) = uint(ts)
 		case reflect.Uint8:
-			*(*uint8)(ptrVal) = uint8(t.Unix())
+			*(*uint8)(ptrVal) = uint8(ts)
 		case reflect.Uint16:
-			*(*uint16)(ptrVal) = uint16(t.Unix())
+			*(*uint16)(ptrVal) = uint16(ts)
 		case reflect.Uint32:
-			*(*uint32)(ptrVal) = uint32(t.Unix())
+			*(*uint32)(ptrVal) = uint32(ts)
 		case reflect.Uint64:
-			*(*uint64)(ptrVal) = uint64(t.Unix())
+			*(*uint64)(ptrVal) = uint64(ts)
 		case reflect.Float32:
-			*(*float32)(ptrVal) = float32(t.Unix())
+			*(*float32)(ptrVal) = float32(ts)
 		case reflect.Float64:
-			*(*float64)(ptrVal) = float64(t.Unix())
+			*(*float64)(ptrVal) = float64(ts)
 		}
 		return nil
 	}
@@ -994,7 +1073,7 @@ func scanFromString(pt *time.Time, isTime bool, st reflect2.Type, dt reflect2.Ty
 			if err != nil {
 				return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
 			}
-			*pt = time.Unix(i64, 0)
+			*(*time.Time)(ptrVal) = time.Unix(i64, 0)
 		} else {
 			// string => []byte
 			if dk == reflect.Slice && dt.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
@@ -1011,78 +1090,186 @@ func scanFromString(pt *time.Time, isTime bool, st reflect2.Type, dt reflect2.Ty
 func (dest *scanner) Scan(src interface{}) error {
 	var (
 		st     = reflect2.TypeOf(src)
-		dt     = dest.Type
-		dk     = dt.Kind()
+		dk     = dest.Type.Kind()
 		sk     = st.Kind()
-		ptrVal = reflect2.PtrOf(dest.Val)
 	)
 
 	// NULL值
 	if st.UnsafeIsNil(reflect2.PtrOf(src)) {
 		// 设置成默认值，如果是指针，那么是空指针
-		dt.UnsafeSet(ptrVal, dt.UnsafeNew())
+		dt.UnsafeSet(dest.Val, dt.UnsafeNew())
 		return nil
 	}
 
 	// 相同类型，直接赋值
 	if dk == sk {
-		dt.UnsafeSet(ptrVal, reflect2.PtrOf(src))
+		dt.UnsafeSet(dest.Val, reflect2.PtrOf(src))
 		return nil
 	}
 
-	pt, isTime := dest.Val.(*time.Time)
+	isTime := dt.String() == "time.Time"
 	// int64 => time.Time
 	if sk == reflect.Int64 && isTime {
-		*pt = time.Unix(src.(int64), 0)
+		*(*time.Time)(dest.Val) = time.Unix(src.(int64), 0)
+		return nil
+	}
+
+	scanFromString := func(tmp string) error {
+		// 时间格式(DATE/DATETIME) => number
+		if (isTime || (dk >= reflect.Int && dk <= reflect.Float64)) && isTimeFormat(tmp) {
+			layout := _timeLayout[0:len(tmp)]
+			if isTime {
+				*pt, _ = time.Parse(layout, tmp)
+				return nil
+			}
+			t, _ := time.Parse(layout, tmp)
+			switch dk {
+			case reflect.Int:
+				*(*int)(ptrVal) = int(t.Unix())
+			case reflect.Int8:
+				*(*int8)(ptrVal) = int8(t.Unix())
+			case reflect.Int16:
+				*(*int16)(ptrVal) = int16(t.Unix())
+			case reflect.Int32:
+				*(*int32)(ptrVal) = int32(t.Unix())
+			case reflect.Int64:
+				*(*int64)(ptrVal) = t.Unix()
+			case reflect.Uint:
+				*(*uint)(ptrVal) = uint(t.Unix())
+			case reflect.Uint8:
+				*(*uint8)(ptrVal) = uint8(t.Unix())
+			case reflect.Uint16:
+				*(*uint16)(ptrVal) = uint16(t.Unix())
+			case reflect.Uint32:
+				*(*uint32)(ptrVal) = uint32(t.Unix())
+			case reflect.Uint64:
+				*(*uint64)(ptrVal) = uint64(t.Unix())
+			case reflect.Float32:
+				*(*float32)(ptrVal) = float32(t.Unix())
+			case reflect.Float64:
+				*(*float64)(ptrVal) = float64(t.Unix())
+			}
+			return nil
+		}
+
+		// 非时间格式
+		switch dk {
+		case reflect.Bool:
+			*(*bool)(ptrVal) = (tmp == "true")
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			i64, err := strconv.ParseInt(tmp, 10, dest.Type.Type1().Bits())
+			if err != nil {
+				return fmt.Errorf("converting driver.Value type %T (%s) to a %s: %v", src, tmp, dk, strconvErr(err))
+			}
+			switch dk {
+			case reflect.Int:
+				*(*int)(ptrVal) = int(i64)
+			case reflect.Int8:
+				*(*int8)(ptrVal) = int8(i64)
+			case reflect.Int16:
+				*(*int16)(ptrVal) = int16(i64)
+			case reflect.Int32:
+				*(*int32)(ptrVal) = int32(i64)
+			case reflect.Int64:
+				*(*int64)(ptrVal) = i64
+			}
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			u64, err := strconv.ParseUint(tmp, 10, dest.Type.Type1().Bits())
+			if err != nil {
+				return fmt.Errorf("converting driver.Value type %T (%s) to a %s: %v", src, tmp, dk, strconvErr(err))
+			}
+			switch dk {
+			case reflect.Uint:
+				*(*uint)(ptrVal) = uint(u64)
+			case reflect.Uint8:
+				*(*uint8)(ptrVal) = uint8(u64)
+			case reflect.Uint16:
+				*(*uint16)(ptrVal) = uint16(u64)
+			case reflect.Uint32:
+				*(*uint32)(ptrVal) = uint32(u64)
+			case reflect.Uint64:
+				*(*uint64)(ptrVal) = u64
+			}
+		case reflect.Float32, reflect.Float64:
+			f64, err := strconv.ParseFloat(tmp, dest.Type.Type1().Bits())
+			if err != nil {
+				return fmt.Errorf("converting driver.Value type %T (%s) to a %s: %v", src, tmp, dk, strconvErr(err))
+			}
+			if dk == reflect.Float32 {
+				*(*float32)(ptrVal) = float32(f64)
+			} else {
+				*(*float64)(ptrVal) = f64
+			}
+		case reflect.String:
+			*(*string)(ptrVal) = tmp
+		default:
+			// 转时间类型
+			if isTime {
+				// 获取数值时间戳
+				i64, err := strconv.ParseInt(tmp, 10, 64)
+				if err != nil {
+					return fmt.Errorf("converting driver.Value type %T (%s) to a %s: %v", src, tmp, dk, strconvErr(err))
+				}
+				*pt = time.Unix(i64, 0)
+			} else {
+				// string => []byte
+				if dk == reflect.Slice && dest.Type.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
+					*(*[]byte)(ptrVal) = reflect2.UnsafeCastString(tmp)
+					return nil
+				}
+				// TODO 自定义类型，尝试转换
+				return fmt.Errorf("converting driver.Value type %T (%s) to a %s", src, tmp, dest.Type.String())
+			}
+		}
 		return nil
 	}
 
 	if sk == reflect.String {
-		return scanFromString(pt, isTime, st, dt, ptrVal, src.(string))
+		return scanFromString(isTime, st, dt, dest.Val, src.(string))
 	} else if sk == reflect.Slice && st.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
-		return scanFromString(pt, isTime, st, dt, ptrVal, string(src.([]byte)))
+		return scanFromString(isTime, st, dt, dest.Val, string(src.([]byte)))
 	}
 
 	switch dk {
 	case reflect.Bool:
 		switch sk {
 		case reflect.Int64:
-			*(*bool)(ptrVal) = (src.(int64) != 0)
+			*(*bool)(dest.Val) = (src.(int64) != 0)
 		case reflect.Float64:
-			*(*bool)(ptrVal) = (src.(float64) != 0)
+			*(*bool)(dest.Val) = (src.(float64) != 0)
 		}
 	case reflect.Int64:
 		switch sk {
 		case reflect.Bool:
 			if src.(bool) {
-				*(*int64)(ptrVal) = int64(1)
+				*(*int64)(dest.Val) = int64(1)
 			} else {
-				*(*int64)(ptrVal) = int64(0)
+				*(*int64)(dest.Val) = int64(0)
 			}
 		case reflect.Float64:
-			*(*int64)(ptrVal) = int64(src.(float64))
+			*(*int64)(dest.Val) = int64(src.(float64))
 		}
 	case reflect.Float64:
 		switch sk {
 		case reflect.Bool:
 			if src.(bool) {
-				*(*float64)(ptrVal) = float64(1)
+				*(*float64)(dest.Val) = float64(1)
 			} else {
-				*(*float64)(ptrVal) = float64(0)
+				*(*float64)(dest.Val) = float64(0)
 			}
 		case reflect.Int64:
-			*(*float64)(ptrVal) = float64(src.(int64))
+			*(*float64)(dest.Val) = float64(src.(int64))
 		}
 	case reflect.String:
-		*(*string)(ptrVal) = numberToString(sk, src)
+		*(*string)(dest.Val) = numberToString(sk, src)
 	default:
 		// number => []byte
 		if dk == reflect.Slice && dt.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
-			*(*[]byte)(ptrVal) = reflect2.UnsafeCastString(numberToString(sk, src))
+			*(*[]byte)(dest.Val) = reflect2.UnsafeCastString(numberToString(sk, src))
 			return nil
 		}
 		// TODO 自定义类型，尝试转换
-		return fmt.Errorf("converting driver.Value type %T to a %s", src, dt.String())
+		return fmt.Errorf("converting driver.Value type %T to a %s", src, dest.Type.String())
 	}
 	return nil
 }
@@ -1159,6 +1346,32 @@ func In(field string, args ...interface{}) *ormCond {
 	sb.WriteString(")")
 	return &ormCond{Field: field, Op: sb.String(), Args: args}
 }
+
+/*
+	data-binding相关
+*/
+type DataBindingItem struct {
+	SQL string
+	Cols []interface{}
+	Type reflect2.Type
+	Elem interface{}
+}
+
+func storeToCache(file string, line int, item *DataBindingItem) {
+	_dataBindingCache.Store(fmt.Sprintf("%s:%d", file, line), item)
+	return
+}
+
+func loadFromCache(file string, line int) *DataBindingItem {
+	if i, ok := _dataBindingCache.Load(fmt.Sprintf("%s:%d", file, line)); ok {
+		return i.(*DataBindingItem)
+	}
+	return nil
+}
+
+var (
+	_dataBindingCache sync.Map
+)
 
 /*
    Mock相关
@@ -1282,7 +1495,7 @@ func BormMockFinish() error {
 	mockData := _mockData
 	_mockData = make([]*MockMatcher, 0)
 	if len(mockData) > 0 {
-		return fmt.Errorf("Some of the mock data left behind: %+v", mockData)
+		return errors.New(fmt.Sprintf("Some of the mock data left behind: %+v", mockData))
 	}
 	return nil
 }
