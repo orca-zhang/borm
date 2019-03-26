@@ -1,15 +1,17 @@
 package borm
 
 import (
-	"fmt"
-	"testing"
 	"context"
 	"database/sql"
+	"testing"
+
+	//"fmt"
 	"log"
 	"time"
+	"unsafe"
 
 	_ "github.com/go-sql-driver/mysql"
-    "github.com/modern-go/reflect2"
+	"github.com/modern-go/reflect2"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -19,19 +21,19 @@ var (
 
 func init() {
 	var err error
-	db, err = sql.Open("mysql", "root:xxxx@tcp(0.0.0.0:3306)/borm_test?charset=utf8mb4")
+	db, err = sql.Open("mysql", "root:pwd@tcp(0.0.0.0:3306)/borm_test?charset=utf8mb4")
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 type x struct {
-	X string `borm:"name"`
-	Y int64 `borm:"age"`
-	Z time.Time `borm:"ctime4"`
-	Z1 int64 `borm:"ctime"`
-	Z2 int64 `borm:"ctime2"`
-	Z3 int64 `borm:"ctime3"`
+	X  string    `borm:"name"`
+	Y  int64     `borm:"age"`
+	Z  time.Time `borm:"ctime4"`
+	Z1 int64     `borm:"ctime"`
+	Z2 int64     `borm:"ctime2"`
+	Z3 int64     `borm:"ctime3"`
 }
 
 type c struct {
@@ -39,51 +41,54 @@ type c struct {
 }
 
 func BenchmarkBormSelect(b *testing.B) {
-    for i := 0; i < b.N; i++ {
-		var o []*x
-		tbl := Table(db, "test")
+	for i := 0; i < b.N; i++ {
+		var o []x
+		tbl := Table(db, "test").Reuse()
 		tbl.Select(context.TODO(), &o, Where("`id` >= 1"))
 	}
 }
 
 func BenchmarkNormalSelect(b *testing.B) {
-    for i := 0; i < b.N; i++ {
+	for i := 0; i < b.N; i++ {
 		var o []*x
-        rows, _ := db.QueryContext(context.TODO(), "select `name`,`age`,`ctime4`,`ctime`,`ctime2`,`ctime3` from `test` where `id` >= 1")
+		rows, _ := db.QueryContext(context.TODO(), "select `name`,`age`,`ctime4`,`ctime`,`ctime2`,`ctime3` from `test` where `id` >= 1")
 
-        defer rows.Close()
-
-        for rows.Next() {
+		for rows.Next() {
 			var t x
 			var ctime4 string
 			rows.Scan(&t.X, &t.Y, &ctime4, &t.Z1, &t.Z2, &t.Z3)
 			t.Z, _ = time.Parse("2006-01-02 15:04:05", ctime4)
 			o = append(o, &t)
-        }
+		}
+
+		rows.Close()
 	}
 }
 
+/*
 func TestSelect(t *testing.T) {
 
 	Convey("normal", t, func() {
 
 		Convey("single select", func() {
 			var o x
-			tbl := Table(db, "test").Debug()
-		
-			n, err := tbl.Select(context.TODO(), &o, Where("`id` >= ?", 1), Limit(100))
-		
-			So(err, ShouldBeNil)
-			So(n, ShouldEqual, 1)
-			fmt.Printf("%+v\n", o)
+			tbl := Table(db, "test").Reuse()
+
+			for i := 0; i < 10; i++ {
+				n, err := tbl.Select(context.TODO(), &o, Where("`id` >= ?", 1), Limit(100))
+
+				So(err, ShouldBeNil)
+				So(n, ShouldEqual, 1)
+				fmt.Printf("%+v\n", o)
+			}
 		})
 
 		Convey("multiple select", func() {
 			var o []x
 			tbl := Table(db, "test").Debug()
-	
+
 			n, err := tbl.Select(context.TODO(), &o, Where(Gte("id", 0)), OrderBy("id"), Limit(0, 100))
-		
+
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
 			fmt.Printf("%+v\n", o)
@@ -92,7 +97,7 @@ func TestSelect(t *testing.T) {
 		Convey("multiple select with pointer", func() {
 			var o []*x
 			tbl := Table(db, "test").Debug()
-		
+
 			n, err := tbl.Select(context.TODO(), &o, Where(In("id", []interface{}{1, 2, 3, 4}...)))
 
 			So(err, ShouldBeNil)
@@ -106,7 +111,7 @@ func TestSelect(t *testing.T) {
 		Convey("counter", func() {
 			var o c
 			tbl := Table(db, "test").Debug()
-		
+
 			n, err := tbl.Select(context.TODO(), &o, Limit(100))
 
 			So(err, ShouldBeNil)
@@ -150,9 +155,9 @@ func TestInsert(t *testing.T) {
 				Z1: 1551405784,
 			}
 			tbl := Table(db, "test").Debug()
-		
+
 			n, err := tbl.Insert(context.TODO(), &o)
-		
+
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 		})
@@ -163,12 +168,10 @@ func TestInsert(t *testing.T) {
 				Y: 20,
 				Z1: 1551405784,
 			}
-			tbl := Table(db, "test", Config{
-				ReplaceInto: true,
-			}).Debug()
+			tbl := Table(db, "test").ReplaceInto().Debug()
 
 			n, err := tbl.Insert(context.TODO(), &o)
-		
+
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 		})
@@ -186,10 +189,8 @@ func TestInsert(t *testing.T) {
 					Z1: 1551405784,
 				},
 			}
-			tbl := Table(db, "test", Config{
-				InsertIgnore: true,
-			}).Debug()
-		
+			tbl := Table(db, "test").InsertIgnore().Debug()
+
 			n, err := tbl.Insert(context.TODO(), &o)
 
 			So(err, ShouldBeNil)
@@ -239,16 +240,16 @@ func TestUpdate(t *testing.T) {
 				Z1: 1551405784,
 			}
 			tbl := Table(db, "test").Debug()
-		
+
 			n, err := tbl.Update(context.TODO(), &o, Where("id = ?", 0))
-		
+
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
 		})
 
 		Convey("update with map", func() {
 			tbl := Table(db, "test").Debug()
-		
+
 			n, err := tbl.Update(context.TODO(), map[string]interface{}{
 				"name": "OrcaUpdated",
 				"age": 88,
@@ -260,7 +261,7 @@ func TestUpdate(t *testing.T) {
 
 		Convey("update with map & Fields", func() {
 			tbl := Table(db, "test").Debug()
-		
+
 			n, err := tbl.Update(context.TODO(), map[string]interface{}{
 				"name": "OrcaUpdatedFields",
 				"age": 88,
@@ -292,26 +293,27 @@ func TestDelete(t *testing.T) {
 
 		Convey("single delete", func() {
 			tbl := Table(db, "test").Debug()
-		
+
 			n, err := tbl.Delete(context.TODO(), Where("`id`=0"))
-		
+
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
 		})
 	})
 }
+*/
 
 func TestScanner(t *testing.T) {
 	/*
-	// The src value will be of one of the following types:
-	//
-	//    int64
-	//    float64
-	//    bool
-	//    []byte
-	//    string
-	//    time.Time  => []byte with Format
-	//    nil - for NULL values
+		// The src value will be of one of the following types:
+		//
+		//    int64
+		//    float64
+		//    bool
+		//    []byte
+		//    string
+		//    time.Time  => []byte with Format
+		//    nil - for NULL values
 	*/
 
 	Convey("nil", t, func() {
@@ -320,11 +322,12 @@ func TestScanner(t *testing.T) {
 			ptr := &a
 			nilScanner := scanner{
 				Type: reflect2.TypeOf(ptr),
-				Val: &ptr,
+				Val:  unsafe.Pointer(&ptr),
 			}
 
 			var ptr1 *int = nil
 			err := nilScanner.Scan(ptr1)
+			log.Println(ptr)
 			So(err, ShouldBeNil)
 			So(ptr, ShouldEqual, nil)
 		})
@@ -336,7 +339,7 @@ func TestScanner(t *testing.T) {
 			b := false
 			boolScanner := scanner{
 				Type: reflect2.TypeOf(b),
-				Val: &b,
+				Val:  unsafe.Pointer(&b),
 			}
 
 			err := boolScanner.Scan(bool(true))
@@ -349,7 +352,7 @@ func TestScanner(t *testing.T) {
 			b := false
 			boolScanner := scanner{
 				Type: reflect2.TypeOf(b),
-				Val: &b,
+				Val:  unsafe.Pointer(&b),
 			}
 
 			err := boolScanner.Scan(int64(23))
@@ -362,7 +365,7 @@ func TestScanner(t *testing.T) {
 			b := false
 			boolScanner := scanner{
 				Type: reflect2.TypeOf(b),
-				Val: &b,
+				Val:  unsafe.Pointer(&b),
 			}
 
 			err := boolScanner.Scan(float64(0.0))
@@ -375,7 +378,7 @@ func TestScanner(t *testing.T) {
 			b := false
 			boolScanner := scanner{
 				Type: reflect2.TypeOf(b),
-				Val: &b,
+				Val:  unsafe.Pointer(&b),
 			}
 
 			err := boolScanner.Scan(float64(23.999))
@@ -390,7 +393,7 @@ func TestScanner(t *testing.T) {
 			i := int64(0)
 			int64Scanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := int64Scanner.Scan(bool(true))
@@ -403,7 +406,7 @@ func TestScanner(t *testing.T) {
 			i := int64(0)
 			int64Scanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := int64Scanner.Scan(bool(false))
@@ -416,7 +419,7 @@ func TestScanner(t *testing.T) {
 			i := int64(0)
 			int64Scanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := int64Scanner.Scan(int64(123))
@@ -429,7 +432,7 @@ func TestScanner(t *testing.T) {
 			i := int64(0)
 			int64Scanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := int64Scanner.Scan(float64(123.33))
@@ -444,7 +447,7 @@ func TestScanner(t *testing.T) {
 			f := float64(0)
 			float64Scanner := scanner{
 				Type: reflect2.TypeOf(f),
-				Val: &f,
+				Val:  unsafe.Pointer(&f),
 			}
 
 			err := float64Scanner.Scan(bool(true))
@@ -457,7 +460,7 @@ func TestScanner(t *testing.T) {
 			f := float64(0)
 			float64Scanner := scanner{
 				Type: reflect2.TypeOf(f),
-				Val: &f,
+				Val:  unsafe.Pointer(&f),
 			}
 
 			err := float64Scanner.Scan(bool(false))
@@ -470,7 +473,7 @@ func TestScanner(t *testing.T) {
 			f := float64(0)
 			float64Scanner := scanner{
 				Type: reflect2.TypeOf(f),
-				Val: &f,
+				Val:  unsafe.Pointer(&f),
 			}
 
 			err := float64Scanner.Scan(int64(123))
@@ -483,7 +486,7 @@ func TestScanner(t *testing.T) {
 			f := float64(0)
 			float64Scanner := scanner{
 				Type: reflect2.TypeOf(f),
-				Val: &f,
+				Val:  unsafe.Pointer(&f),
 			}
 
 			err := float64Scanner.Scan(float64(123.33))
@@ -498,7 +501,7 @@ func TestScanner(t *testing.T) {
 			s := ""
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(s),
-				Val: &s,
+				Val:  unsafe.Pointer(&s),
 			}
 
 			err := stringScanner.Scan(bool(true))
@@ -511,7 +514,7 @@ func TestScanner(t *testing.T) {
 			s := ""
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(s),
-				Val: &s,
+				Val:  unsafe.Pointer(&s),
 			}
 
 			err := stringScanner.Scan(bool(false))
@@ -524,7 +527,7 @@ func TestScanner(t *testing.T) {
 			s := ""
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(s),
-				Val: &s,
+				Val:  unsafe.Pointer(&s),
 			}
 
 			err := stringScanner.Scan(int64(123))
@@ -537,7 +540,7 @@ func TestScanner(t *testing.T) {
 			s := ""
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(s),
-				Val: &s,
+				Val:  unsafe.Pointer(&s),
 			}
 
 			err := stringScanner.Scan(float64(123.33))
@@ -550,7 +553,7 @@ func TestScanner(t *testing.T) {
 			s := "xxx"
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(s),
-				Val: &s,
+				Val:  unsafe.Pointer(&s),
 			}
 
 			err := stringScanner.Scan(string("123.33"))
@@ -563,7 +566,7 @@ func TestScanner(t *testing.T) {
 			s := "xxx"
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(s),
-				Val: &s,
+				Val:  unsafe.Pointer(&s),
 			}
 
 			err := stringScanner.Scan([]byte("123.33"))
@@ -578,7 +581,7 @@ func TestScanner(t *testing.T) {
 			var bs []byte
 			bytesScanner := scanner{
 				Type: reflect2.TypeOf(bs),
-				Val: &bs,
+				Val:  unsafe.Pointer(&bs),
 			}
 
 			err := bytesScanner.Scan(bool(false))
@@ -590,7 +593,7 @@ func TestScanner(t *testing.T) {
 			var bs []byte
 			bytesScanner := scanner{
 				Type: reflect2.TypeOf(bs),
-				Val: &bs,
+				Val:  unsafe.Pointer(&bs),
 			}
 
 			err := bytesScanner.Scan(bool(true))
@@ -603,7 +606,7 @@ func TestScanner(t *testing.T) {
 			var bs []byte
 			bytesScanner := scanner{
 				Type: reflect2.TypeOf(bs),
-				Val: &bs,
+				Val:  unsafe.Pointer(&bs),
 			}
 
 			err := bytesScanner.Scan(int64(2233))
@@ -616,7 +619,7 @@ func TestScanner(t *testing.T) {
 			var bs []byte
 			bytesScanner := scanner{
 				Type: reflect2.TypeOf(bs),
-				Val: &bs,
+				Val:  unsafe.Pointer(&bs),
 			}
 
 			err := bytesScanner.Scan(float64(22.33))
@@ -629,7 +632,7 @@ func TestScanner(t *testing.T) {
 			var bs []byte
 			bytesScanner := scanner{
 				Type: reflect2.TypeOf(bs),
-				Val: &bs,
+				Val:  unsafe.Pointer(&bs),
 			}
 
 			err := bytesScanner.Scan(string("xxxxxx"))
@@ -644,7 +647,7 @@ func TestScanner(t *testing.T) {
 			b := false
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(b),
-				Val: &b,
+				Val:  unsafe.Pointer(&b),
 			}
 
 			err := stringScanner.Scan(string("true"))
@@ -657,7 +660,7 @@ func TestScanner(t *testing.T) {
 			b := true
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(b),
-				Val: &b,
+				Val:  unsafe.Pointer(&b),
 			}
 
 			err := stringScanner.Scan(string("false"))
@@ -670,7 +673,7 @@ func TestScanner(t *testing.T) {
 			i := int(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -683,7 +686,7 @@ func TestScanner(t *testing.T) {
 			i := int8(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -696,7 +699,7 @@ func TestScanner(t *testing.T) {
 			i := int16(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -709,7 +712,7 @@ func TestScanner(t *testing.T) {
 			i := int32(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -722,7 +725,7 @@ func TestScanner(t *testing.T) {
 			i := int64(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -735,7 +738,7 @@ func TestScanner(t *testing.T) {
 			i := uint(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -748,7 +751,7 @@ func TestScanner(t *testing.T) {
 			i := uint8(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -761,7 +764,7 @@ func TestScanner(t *testing.T) {
 			i := uint16(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -774,7 +777,7 @@ func TestScanner(t *testing.T) {
 			i := uint32(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -787,7 +790,7 @@ func TestScanner(t *testing.T) {
 			i := uint64(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("123"))
@@ -800,7 +803,7 @@ func TestScanner(t *testing.T) {
 			f := float32(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(f),
-				Val: &f,
+				Val:  unsafe.Pointer(&f),
 			}
 
 			err := stringScanner.Scan(string("123.33"))
@@ -813,7 +816,7 @@ func TestScanner(t *testing.T) {
 			f := float64(0)
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(f),
-				Val: &f,
+				Val:  unsafe.Pointer(&f),
 			}
 
 			err := stringScanner.Scan(string("123.33"))
@@ -828,7 +831,7 @@ func TestScanner(t *testing.T) {
 			var t time.Time
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(t),
-				Val: &t,
+				Val:  unsafe.Pointer(&t),
 			}
 
 			err := stringScanner.Scan(int64(1551405784))
@@ -841,7 +844,7 @@ func TestScanner(t *testing.T) {
 			var t time.Time
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(t),
-				Val: &t,
+				Val:  unsafe.Pointer(&t),
 			}
 
 			err := stringScanner.Scan([]byte("2019-03-01"))
@@ -854,7 +857,7 @@ func TestScanner(t *testing.T) {
 			var t time.Time
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(t),
-				Val: &t,
+				Val:  unsafe.Pointer(&t),
 			}
 
 			err := stringScanner.Scan([]byte("2019-03-01 13:05:59"))
@@ -867,7 +870,7 @@ func TestScanner(t *testing.T) {
 			var t time.Time
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(t),
-				Val: &t,
+				Val:  unsafe.Pointer(&t),
 			}
 
 			err := stringScanner.Scan(string("2019-03-01"))
@@ -880,7 +883,7 @@ func TestScanner(t *testing.T) {
 			var t time.Time
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(t),
-				Val: &t,
+				Val:  unsafe.Pointer(&t),
 			}
 
 			err := stringScanner.Scan(string("2019-03-01 13:05:59"))
@@ -893,7 +896,7 @@ func TestScanner(t *testing.T) {
 			var i int64
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("2019-03-01"))
@@ -906,7 +909,7 @@ func TestScanner(t *testing.T) {
 			var i int64
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("2019-03-01 13:05:59"))
@@ -919,7 +922,7 @@ func TestScanner(t *testing.T) {
 			var i int
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("2019-03-01"))
@@ -932,7 +935,7 @@ func TestScanner(t *testing.T) {
 			var i int
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(i),
-				Val: &i,
+				Val:  unsafe.Pointer(&i),
 			}
 
 			err := stringScanner.Scan(string("2019-03-01 13:05:59"))
@@ -978,8 +981,8 @@ func TestMock(t *testing.T) {
 	Convey("Mock one func", t, func() {
 		Convey("tests", func() {
 			o := x{
-				X: "Orca1",
-				Y: 20,
+				X:  "Orca1",
+				Y:  20,
 				Z1: 1551405784,
 			}
 
