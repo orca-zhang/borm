@@ -1,9 +1,9 @@
 /*
-   borm is a beautiful orm library in Go.
+   borm is a beautiful orm library for Go.
 
    MIT License
 
-   Copyright (c) 2010-2019 <orca.zhang@yahoo.com>
+   Copyright (c) 2019 <orca.zhang@yahoo.com>
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
