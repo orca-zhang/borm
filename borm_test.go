@@ -21,7 +21,7 @@ var (
 
 func init() {
 	var err error
-	db, err = sql.Open("mysql", "borm_test:borm_test@tcp(139.224.113.114:3306)/borm_test?charset=utf8mb4")
+	db, err = sql.Open("mysql", "root:semaphoredb@tcp(localhost:3306)/borm_test?charset=utf8mb4")
 	if err != nil {
 		log.Fatal(err)
 	}
