@@ -957,7 +957,7 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 	dk := dt.Kind()
 
 	// 时间格式(DATE/DATETIME) => number
-	if (isTime || (dk >= reflect.Int && dk <= reflect.Float64)) {
+	if isTime || (dk >= reflect.Int && dk <= reflect.Float64) {
 		var year, month, day, hour, min, sec int
 		n, _ := fmt.Sscanf(tmp, "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &min, &sec)
 		if n == 3 || n == 6 {
@@ -1014,7 +1014,7 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 			*(*int8)(ptrVal) = int8(i64)
 		} else {
 			*(*int)(ptrVal) = int(i64)
-		} 
+		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		u64, err := strconv.ParseUint(tmp, 10, dt.Type1().Bits())
 		if err != nil {
@@ -1104,7 +1104,7 @@ func (dest *scanner) Scan(src interface{}) error {
 		} else if sk == reflect.Float64 {
 			*(*bool)(dest.Val) = (src.(float64) != 0)
 		}
-	 } else if dk == reflect.Int64 {
+	} else if dk == reflect.Int64 {
 		if sk == reflect.Bool {
 			if src.(bool) {
 				*(*int64)(dest.Val) = int64(1)
@@ -1124,9 +1124,9 @@ func (dest *scanner) Scan(src interface{}) error {
 		} else if sk == reflect.Int64 {
 			*(*float64)(dest.Val) = float64(src.(int64))
 		}
-	 } else if dk == reflect.String {
+	} else if dk == reflect.String {
 		*(*string)(dest.Val) = numberToString(sk, src)
-	 } else {
+	} else {
 		// number => []byte
 		if dk == reflect.Slice && dt.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
 			*(*[]byte)(dest.Val) = reflect2.UnsafeCastString(numberToString(sk, src))
