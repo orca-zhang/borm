@@ -48,6 +48,7 @@ const (
 	_fields = 1 >> iota
 	_where
 	_groupBy
+	_having
 	_orderBy
 	_limit
 	_onDuplicateKeyUpdate
@@ -966,29 +967,30 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 				return nil
 			}
 			ts := toUnix(year, month, day, hour, min, sec)
-			if dk == reflect.Int {
+			switch dk {
+			case reflect.Int:
 				*(*int)(ptrVal) = int(ts)
-			} else if dk == reflect.Int8 {
+			case reflect.Int8:
 				*(*int8)(ptrVal) = int8(ts)
-			} else if dk == reflect.Int16 {
+			case reflect.Int16:
 				*(*int16)(ptrVal) = int16(ts)
-			} else if dk == reflect.Int32 {
+			case reflect.Int32:
 				*(*int32)(ptrVal) = int32(ts)
-			} else if dk == reflect.Int64 {
+			case reflect.Int64:
 				*(*int64)(ptrVal) = ts
-			} else if dk == reflect.Uint {
+			case reflect.Uint:
 				*(*uint)(ptrVal) = uint(ts)
-			} else if dk == reflect.Uint8 {
+			case reflect.Uint8:
 				*(*uint8)(ptrVal) = uint8(ts)
-			} else if dk == reflect.Uint16 {
+			case reflect.Uint16:
 				*(*uint16)(ptrVal) = uint16(ts)
-			} else if dk == reflect.Uint32 {
+			case reflect.Uint32:
 				*(*uint32)(ptrVal) = uint32(ts)
-			} else if dk == reflect.Uint64 {
+			case reflect.Uint64:
 				*(*uint64)(ptrVal) = uint64(ts)
-			} else if dk == reflect.Float32 {
+			case reflect.Float32:
 				*(*float32)(ptrVal) = float32(ts)
-			} else if dk == reflect.Float64 {
+			case reflect.Float64:
 				*(*float64)(ptrVal) = float64(ts)
 			}
 			return nil
@@ -1004,15 +1006,16 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 		if err != nil {
 			return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
 		}
-		if dk == reflect.Int64 {
+		switch dk {
+		case reflect.Int64:
 			*(*int64)(ptrVal) = i64
-		} else if dk == reflect.Int32 {
+		case reflect.Int32:
 			*(*int32)(ptrVal) = int32(i64)
-		} else if dk == reflect.Int16 {
+		case reflect.Int16:
 			*(*int16)(ptrVal) = int16(i64)
-		} else if dk == reflect.Int8 {
+		case reflect.Int8:
 			*(*int8)(ptrVal) = int8(i64)
-		} else {
+		case reflect.Int:
 			*(*int)(ptrVal) = int(i64)
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -1020,15 +1023,16 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 		if err != nil {
 			return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
 		}
-		if dk == reflect.Uint64 {
+		switch dk {
+		case reflect.Uint64:
 			*(*uint64)(ptrVal) = u64
-		} else if dk == reflect.Uint32 {
+		case reflect.Uint32:
 			*(*uint32)(ptrVal) = uint32(u64)
-		} else if dk == reflect.Uint16 {
+		case reflect.Uint16:
 			*(*uint16)(ptrVal) = uint16(u64)
-		} else if dk == reflect.Uint8 {
+		case reflect.Uint8:
 			*(*uint8)(ptrVal) = uint8(u64)
-		} else {
+		case reflect.Uint:
 			*(*uint)(ptrVal) = uint(u64)
 		}
 	case reflect.Float32, reflect.Float64:
@@ -1068,8 +1072,9 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 func (dest *scanner) Scan(src interface{}) error {
 	var (
 		st = reflect2.TypeOf(src)
-		dk = dest.Type.Kind()
+		dt = dest.Type
 		sk = st.Kind()
+		dk = dt.Kind()
 	)
 
 	// NULL值
@@ -1098,35 +1103,39 @@ func (dest *scanner) Scan(src interface{}) error {
 		return scanFromString(isTime, st, dt, dest.Val, string(src.([]byte)))
 	}
 
-	if dk == reflect.Bool {
-		if sk == reflect.Int64 {
+	switch dk {
+	case reflect.Bool:
+		switch sk {
+		case reflect.Int64:
 			*(*bool)(dest.Val) = (src.(int64) != 0)
-		} else if sk == reflect.Float64 {
+		case reflect.Float64:
 			*(*bool)(dest.Val) = (src.(float64) != 0)
 		}
-	} else if dk == reflect.Int64 {
-		if sk == reflect.Bool {
+	case reflect.Int64:
+		switch sk {
+		case reflect.Bool:
 			if src.(bool) {
 				*(*int64)(dest.Val) = int64(1)
 			} else {
 				*(*int64)(dest.Val) = int64(0)
 			}
-		} else if sk == reflect.Float64 {
+		case reflect.Float64:
 			*(*int64)(dest.Val) = int64(src.(float64))
 		}
-	} else if dk == reflect.Float64 {
-		if sk == reflect.Bool {
+	case reflect.Float64:
+		switch sk {
+		case reflect.Bool:
 			if src.(bool) {
 				*(*float64)(dest.Val) = float64(1)
 			} else {
 				*(*float64)(dest.Val) = float64(0)
 			}
-		} else if sk == reflect.Int64 {
+		case reflect.Int64:
 			*(*float64)(dest.Val) = float64(src.(int64))
 		}
-	} else if dk == reflect.String {
+	case reflect.String:
 		*(*string)(dest.Val) = numberToString(sk, src)
-	} else {
+	default:
 		// number => []byte
 		if dk == reflect.Slice && dt.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
 			*(*[]byte)(dest.Val) = reflect2.UnsafeCastString(numberToString(sk, src))
