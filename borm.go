@@ -925,23 +925,6 @@ type scanner struct {
 	Val  unsafe.Pointer
 }
 
-func isTimeFormat(s string) bool {
-	isNum := func(ch byte) bool {
-		return ch >= '0' && ch <= '9'
-	}
-	switch len(s) {
-	case 10, // DATE
-		19: //DATETIME
-		return s[4] == '-' && s[7] == '-' &&
-			isNum(s[0]) && isNum(s[1]) && isNum(s[2]) && isNum(s[3]) &&
-			isNum(s[5]) && isNum(s[6]) && isNum(s[8]) && isNum(s[9]) &&
-			(len(s) == 10 || (s[10] == ' ' && isNum(s[11]) && isNum(s[12]) &&
-				s[13] == ':' && isNum(s[14]) && isNum(s[15]) &&
-				s[16] == ':' && isNum(s[17]) && isNum(s[18])))
-	}
-	return false
-}
-
 func numberToString(k reflect.Kind, src interface{}) string {
 	switch k {
 	case reflect.Bool:
@@ -974,41 +957,42 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 	dk := dt.Kind()
 
 	// 时间格式(DATE/DATETIME) => number
-	if (isTime || (dk >= reflect.Int && dk <= reflect.Float64)) && isTimeFormat(tmp) {
+	if (isTime || (dk >= reflect.Int && dk <= reflect.Float64)) {
 		var year, month, day, hour, min, sec int
-		fmt.Sscanf(tmp, "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &min, &sec)
-		if isTime {
-			*(*time.Time)(ptrVal) = time.Unix(toUnix(year, month, day, hour, min, sec), 0)
+		n, _ := fmt.Sscanf(tmp, "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &min, &sec)
+		if n == 3 || n == 6 {
+			if isTime {
+				*(*time.Time)(ptrVal) = time.Unix(toUnix(year, month, day, hour, min, sec), 0)
+				return nil
+			}
+			ts := toUnix(year, month, day, hour, min, sec)
+			if dk == reflect.Int {
+				*(*int)(ptrVal) = int(ts)
+			} else if dk == reflect.Int8 {
+				*(*int8)(ptrVal) = int8(ts)
+			} else if dk == reflect.Int16 {
+				*(*int16)(ptrVal) = int16(ts)
+			} else if dk == reflect.Int32 {
+				*(*int32)(ptrVal) = int32(ts)
+			} else if dk == reflect.Int64 {
+				*(*int64)(ptrVal) = ts
+			} else if dk == reflect.Uint {
+				*(*uint)(ptrVal) = uint(ts)
+			} else if dk == reflect.Uint8 {
+				*(*uint8)(ptrVal) = uint8(ts)
+			} else if dk == reflect.Uint16 {
+				*(*uint16)(ptrVal) = uint16(ts)
+			} else if dk == reflect.Uint32 {
+				*(*uint32)(ptrVal) = uint32(ts)
+			} else if dk == reflect.Uint64 {
+				*(*uint64)(ptrVal) = uint64(ts)
+			} else if dk == reflect.Float32 {
+				*(*float32)(ptrVal) = float32(ts)
+			} else if dk == reflect.Float64 {
+				*(*float64)(ptrVal) = float64(ts)
+			}
 			return nil
 		}
-		ts := toUnix(year, month, day, hour, min, sec)
-		switch dk {
-		case reflect.Int:
-			*(*int)(ptrVal) = int(ts)
-		case reflect.Int8:
-			*(*int8)(ptrVal) = int8(ts)
-		case reflect.Int16:
-			*(*int16)(ptrVal) = int16(ts)
-		case reflect.Int32:
-			*(*int32)(ptrVal) = int32(ts)
-		case reflect.Int64:
-			*(*int64)(ptrVal) = ts
-		case reflect.Uint:
-			*(*uint)(ptrVal) = uint(ts)
-		case reflect.Uint8:
-			*(*uint8)(ptrVal) = uint8(ts)
-		case reflect.Uint16:
-			*(*uint16)(ptrVal) = uint16(ts)
-		case reflect.Uint32:
-			*(*uint32)(ptrVal) = uint32(ts)
-		case reflect.Uint64:
-			*(*uint64)(ptrVal) = uint64(ts)
-		case reflect.Float32:
-			*(*float32)(ptrVal) = float32(ts)
-		case reflect.Float64:
-			*(*float64)(ptrVal) = float64(ts)
-		}
-		return nil
 	}
 
 	// 非时间格式
@@ -1020,34 +1004,32 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 		if err != nil {
 			return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
 		}
-		switch dk {
-		case reflect.Int:
-			*(*int)(ptrVal) = int(i64)
-		case reflect.Int8:
-			*(*int8)(ptrVal) = int8(i64)
-		case reflect.Int16:
-			*(*int16)(ptrVal) = int16(i64)
-		case reflect.Int32:
-			*(*int32)(ptrVal) = int32(i64)
-		case reflect.Int64:
+		if dk == reflect.Int64 {
 			*(*int64)(ptrVal) = i64
-		}
+		} else if dk == reflect.Int32 {
+			*(*int32)(ptrVal) = int32(i64)
+		} else if dk == reflect.Int16 {
+			*(*int16)(ptrVal) = int16(i64)
+		} else if dk == reflect.Int8 {
+			*(*int8)(ptrVal) = int8(i64)
+		} else {
+			*(*int)(ptrVal) = int(i64)
+		} 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		u64, err := strconv.ParseUint(tmp, 10, dt.Type1().Bits())
 		if err != nil {
 			return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
 		}
-		switch dk {
-		case reflect.Uint:
-			*(*uint)(ptrVal) = uint(u64)
-		case reflect.Uint8:
-			*(*uint8)(ptrVal) = uint8(u64)
-		case reflect.Uint16:
-			*(*uint16)(ptrVal) = uint16(u64)
-		case reflect.Uint32:
-			*(*uint32)(ptrVal) = uint32(u64)
-		case reflect.Uint64:
+		if dk == reflect.Uint64 {
 			*(*uint64)(ptrVal) = u64
+		} else if dk == reflect.Uint32 {
+			*(*uint32)(ptrVal) = uint32(u64)
+		} else if dk == reflect.Uint16 {
+			*(*uint16)(ptrVal) = uint16(u64)
+		} else if dk == reflect.Uint8 {
+			*(*uint8)(ptrVal) = uint8(u64)
+		} else {
+			*(*uint)(ptrVal) = uint(u64)
 		}
 	case reflect.Float32, reflect.Float64:
 		f64, err := strconv.ParseFloat(tmp, dt.Type1().Bits())
@@ -1110,155 +1092,41 @@ func (dest *scanner) Scan(src interface{}) error {
 		return nil
 	}
 
-	scanFromString := func(tmp string) error {
-		// 时间格式(DATE/DATETIME) => number
-		if (isTime || (dk >= reflect.Int && dk <= reflect.Float64)) && isTimeFormat(tmp) {
-			layout := _timeLayout[0:len(tmp)]
-			if isTime {
-				*pt, _ = time.Parse(layout, tmp)
-				return nil
-			}
-			t, _ := time.Parse(layout, tmp)
-			switch dk {
-			case reflect.Int:
-				*(*int)(ptrVal) = int(t.Unix())
-			case reflect.Int8:
-				*(*int8)(ptrVal) = int8(t.Unix())
-			case reflect.Int16:
-				*(*int16)(ptrVal) = int16(t.Unix())
-			case reflect.Int32:
-				*(*int32)(ptrVal) = int32(t.Unix())
-			case reflect.Int64:
-				*(*int64)(ptrVal) = t.Unix()
-			case reflect.Uint:
-				*(*uint)(ptrVal) = uint(t.Unix())
-			case reflect.Uint8:
-				*(*uint8)(ptrVal) = uint8(t.Unix())
-			case reflect.Uint16:
-				*(*uint16)(ptrVal) = uint16(t.Unix())
-			case reflect.Uint32:
-				*(*uint32)(ptrVal) = uint32(t.Unix())
-			case reflect.Uint64:
-				*(*uint64)(ptrVal) = uint64(t.Unix())
-			case reflect.Float32:
-				*(*float32)(ptrVal) = float32(t.Unix())
-			case reflect.Float64:
-				*(*float64)(ptrVal) = float64(t.Unix())
-			}
-			return nil
-		}
-
-		// 非时间格式
-		switch dk {
-		case reflect.Bool:
-			*(*bool)(ptrVal) = (tmp == "true")
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			i64, err := strconv.ParseInt(tmp, 10, dest.Type.Type1().Bits())
-			if err != nil {
-				return fmt.Errorf("converting driver.Value type %T (%s) to a %s: %v", src, tmp, dk, strconvErr(err))
-			}
-			switch dk {
-			case reflect.Int:
-				*(*int)(ptrVal) = int(i64)
-			case reflect.Int8:
-				*(*int8)(ptrVal) = int8(i64)
-			case reflect.Int16:
-				*(*int16)(ptrVal) = int16(i64)
-			case reflect.Int32:
-				*(*int32)(ptrVal) = int32(i64)
-			case reflect.Int64:
-				*(*int64)(ptrVal) = i64
-			}
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			u64, err := strconv.ParseUint(tmp, 10, dest.Type.Type1().Bits())
-			if err != nil {
-				return fmt.Errorf("converting driver.Value type %T (%s) to a %s: %v", src, tmp, dk, strconvErr(err))
-			}
-			switch dk {
-			case reflect.Uint:
-				*(*uint)(ptrVal) = uint(u64)
-			case reflect.Uint8:
-				*(*uint8)(ptrVal) = uint8(u64)
-			case reflect.Uint16:
-				*(*uint16)(ptrVal) = uint16(u64)
-			case reflect.Uint32:
-				*(*uint32)(ptrVal) = uint32(u64)
-			case reflect.Uint64:
-				*(*uint64)(ptrVal) = u64
-			}
-		case reflect.Float32, reflect.Float64:
-			f64, err := strconv.ParseFloat(tmp, dest.Type.Type1().Bits())
-			if err != nil {
-				return fmt.Errorf("converting driver.Value type %T (%s) to a %s: %v", src, tmp, dk, strconvErr(err))
-			}
-			if dk == reflect.Float32 {
-				*(*float32)(ptrVal) = float32(f64)
-			} else {
-				*(*float64)(ptrVal) = f64
-			}
-		case reflect.String:
-			*(*string)(ptrVal) = tmp
-		default:
-			// 转时间类型
-			if isTime {
-				// 获取数值时间戳
-				i64, err := strconv.ParseInt(tmp, 10, 64)
-				if err != nil {
-					return fmt.Errorf("converting driver.Value type %T (%s) to a %s: %v", src, tmp, dk, strconvErr(err))
-				}
-				*pt = time.Unix(i64, 0)
-			} else {
-				// string => []byte
-				if dk == reflect.Slice && dest.Type.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
-					*(*[]byte)(ptrVal) = reflect2.UnsafeCastString(tmp)
-					return nil
-				}
-				// TODO 自定义类型，尝试转换
-				return fmt.Errorf("converting driver.Value type %T (%s) to a %s", src, tmp, dest.Type.String())
-			}
-		}
-		return nil
-	}
-
 	if sk == reflect.String {
 		return scanFromString(isTime, st, dt, dest.Val, src.(string))
 	} else if sk == reflect.Slice && st.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
 		return scanFromString(isTime, st, dt, dest.Val, string(src.([]byte)))
 	}
 
-	switch dk {
-	case reflect.Bool:
-		switch sk {
-		case reflect.Int64:
+	if dk == reflect.Bool {
+		if sk == reflect.Int64 {
 			*(*bool)(dest.Val) = (src.(int64) != 0)
-		case reflect.Float64:
+		} else if sk == reflect.Float64 {
 			*(*bool)(dest.Val) = (src.(float64) != 0)
 		}
-	case reflect.Int64:
-		switch sk {
-		case reflect.Bool:
+	 } else if dk == reflect.Int64 {
+		if sk == reflect.Bool {
 			if src.(bool) {
 				*(*int64)(dest.Val) = int64(1)
 			} else {
 				*(*int64)(dest.Val) = int64(0)
 			}
-		case reflect.Float64:
+		} else if sk == reflect.Float64 {
 			*(*int64)(dest.Val) = int64(src.(float64))
 		}
-	case reflect.Float64:
-		switch sk {
-		case reflect.Bool:
+	} else if dk == reflect.Float64 {
+		if sk == reflect.Bool {
 			if src.(bool) {
 				*(*float64)(dest.Val) = float64(1)
 			} else {
 				*(*float64)(dest.Val) = float64(0)
 			}
-		case reflect.Int64:
+		} else if sk == reflect.Int64 {
 			*(*float64)(dest.Val) = float64(src.(int64))
 		}
-	case reflect.String:
+	 } else if dk == reflect.String {
 		*(*string)(dest.Val) = numberToString(sk, src)
-	default:
+	 } else {
 		// number => []byte
 		if dk == reflect.Slice && dt.(reflect2.SliceType).Elem().Kind() == reflect.Uint8 {
 			*(*[]byte)(dest.Val) = reflect2.UnsafeCastString(numberToString(sk, src))
@@ -1279,6 +1147,7 @@ type ormCond struct {
 /*
    条件逻辑运算
 */
+
 // Cond .
 func Cond(c string, args ...interface{}) *ormCond {
 	return &ormCond{Op: c, Args: args}
@@ -1345,6 +1214,7 @@ func In(field string, args ...interface{}) *ormCond {
 /*
 	data-binding相关
 */
+
 // DataBindingItem .
 type DataBindingItem struct {
 	SQL  string
