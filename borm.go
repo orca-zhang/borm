@@ -92,25 +92,21 @@ func (t *table) Debug() *table {
 	return t
 }
 
-// UseNameWhenTagEmpty .
 func (t *table) UseNameWhenTagEmpty() *table {
 	t.Cfg.UseNameWhenTagEmpty = true
 	return t
 }
 
-// ReplaceInto .
 func (t *table) ReplaceInto() *table {
 	t.Cfg.ReplaceInto = true
 	return t
 }
 
-// InsertIgnore .
 func (t *table) InsertIgnore() *table {
 	t.Cfg.InsertIgnore = true
 	return t
 }
 
-// ToTimestamp .
 func (t *table) ToTimestamp() *table {
 	t.Cfg.ToTimestamp = true
 	return t
@@ -163,7 +159,7 @@ func OnDuplicateKeyUpdate(keyVals map[string]interface{}) *onDuplicateKeyUpdateI
 
 func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}) (int, error) {
 	if len(args) <= 0 {
-		return 0, errors.New("Argument 3 cannot be omited.")
+		return 0, errors.New("argument 3 cannot be omitted")
 	}
 
 	var (
@@ -172,7 +168,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 		isPtrArray bool
 		rtElem     = rt
 
-		item *DataBindingItem
+		item     *DataBindingItem
 		stmtArgs []interface{}
 	)
 
@@ -192,7 +188,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 	case reflect.Map:
 		// TODO
 	default:
-		return 0, errors.New("Argument 2 should be map or ptr.")
+		return 0, errors.New("argument 2 should be map or ptr")
 	}
 
 	if config.Mock {
@@ -221,7 +217,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 		} else {
 			args = args[1:]
 		}
-	
+
 		for _, arg := range args {
 			(arg).(ormItem).BuildArgs(&stmtArgs)
 		}
@@ -286,12 +282,12 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 		} else {
 			// 必须有fields且为1
 			if args[0].(ormItem).Type() != _fields {
-				return 0, errors.New("Argument 3 need ONE Fields(\"name\") with ONE field.")
+				return 0, errors.New("argument 3 need ONE Fields(\"name\") with ONE field")
 			}
 
 			fi := args[0].(*fieldsItem)
 			if len(fi.Fields) < 1 {
-				return 0, errors.New("Too few fields.")
+				return 0, errors.New("Too few fields")
 			}
 
 			item.Cols = append(item.Cols, &scanner{
@@ -306,7 +302,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 		sb.WriteString(" from ")
 
 		fieldEscape(&sb, t.Name)
-	
+
 		for _, arg := range args {
 			(arg).(ormItem).BuildSQL(&sb)
 			(arg).(ormItem).BuildArgs(&stmtArgs)
@@ -413,13 +409,13 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...interface{
 	case reflect.Map:
 		// TODO
 	default:
-		return 0, errors.New("Argument 2 should be map or ptr.")
+		return 0, errors.New("argument 2 should be map or ptr")
 	}
 
 	// Fields or None
 	// struct类型
 	if rtElem.Kind() != reflect.Struct {
-		return 0, errors.New("Non-structure type not supported yet.")
+		return 0, errors.New("Non-structure type not supported yet")
 	}
 
 	s := rtElem.(reflect2.StructType)
@@ -521,7 +517,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 	}
 
 	if len(args) <= 0 {
-		return 0, errors.New("Argument 3 cannot be omited.")
+		return 0, errors.New("argument 3 cannot be omitted")
 	}
 
 	var sb strings.Builder
@@ -566,7 +562,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 		case reflect.Map:
 			// TODO
 		default:
-			return 0, errors.New("Argument 2 should be map or ptr.")
+			return 0, errors.New("argument 2 should be map or ptr")
 		}
 
 		var cols []reflect2.StructField
@@ -574,7 +570,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 		// Fields or None
 		// struct类型
 		if rt.Kind() != reflect.Struct {
-			return 0, errors.New("Non-structure type not supported yet.")
+			return 0, errors.New("Non-structure type not supported yet")
 		}
 
 		// Fields or KeyVals or None
@@ -971,7 +967,7 @@ func toUnix(year, month, day, hour, min, sec int) int64 {
 		leap = 1 // February 29
 	}
 
-	return int64((365*year - 719528 + day - 1 + (year+3)/4 - (year+99)/100 + (year+399)/400 + int([]int{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}[month-1]) + leap) * 86400 + hour * 3600 + min * 60 + sec)
+	return int64((365*year-719528+day-1+(year+3)/4-(year+99)/100+(year+399)/400+int([]int{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}[month-1])+leap)*86400 + hour*3600 + min*60 + sec)
 }
 
 func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsafe.Pointer, tmp string) error {
@@ -1089,9 +1085,9 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 
 func (dest *scanner) Scan(src interface{}) error {
 	var (
-		st     = reflect2.TypeOf(src)
-		dk     = dest.Type.Kind()
-		sk     = st.Kind()
+		st = reflect2.TypeOf(src)
+		dk = dest.Type.Kind()
+		sk = st.Kind()
 	)
 
 	// NULL值
@@ -1283,7 +1279,6 @@ type ormCond struct {
 /*
    条件逻辑运算
 */
-
 // Cond .
 func Cond(c string, args ...interface{}) *ormCond {
 	return &ormCond{Op: c, Args: args}
@@ -1350,8 +1345,9 @@ func In(field string, args ...interface{}) *ormCond {
 /*
 	data-binding相关
 */
+// DataBindingItem .
 type DataBindingItem struct {
-	SQL string
+	SQL  string
 	Cols []interface{}
 	Type reflect2.Type
 	Elem interface{}
@@ -1495,7 +1491,7 @@ func BormMockFinish() error {
 	mockData := _mockData
 	_mockData = make([]*MockMatcher, 0)
 	if len(mockData) > 0 {
-		return errors.New(fmt.Sprintf("Some of the mock data left behind: %+v", mockData))
+		return fmt.Errorf("Some of the mock data left behind: %+v", mockData)
 	}
 	return nil
 }

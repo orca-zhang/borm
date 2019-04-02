@@ -325,7 +325,7 @@ func TestScanner(t *testing.T) {
 				Val:  unsafe.Pointer(&ptr),
 			}
 
-			var ptr1 *int = nil
+			var ptr1 *int
 			err := nilScanner.Scan(ptr1)
 			log.Println(ptr)
 			So(err, ShouldBeNil)
