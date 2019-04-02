@@ -149,8 +149,8 @@ func TestInsert(t *testing.T) {
 
 		Convey("single insert", func() {
 			o := x{
-				X: "Orca1",
-				Y: 20,
+				X:  "Orca1",
+				Y:  20,
 				Z1: 1551405784,
 			}
 			tbl := Table(db, "test").Debug()
@@ -163,8 +163,8 @@ func TestInsert(t *testing.T) {
 
 		Convey("single replace", func() {
 			o := x{
-				X: "Orca1",
-				Y: 20,
+				X:  "Orca1",
+				Y:  20,
 				Z1: 1551405784,
 			}
 			tbl := Table(db, "test").ReplaceInto().Debug()
@@ -177,14 +177,14 @@ func TestInsert(t *testing.T) {
 
 		Convey("multiple insert with ignore", func() {
 			o := []*x{
-				&x{
-					X: "Orca4",
-					Y: 23,
+				{
+					X:  "Orca4",
+					Y:  23,
 					Z1: 1551405784,
 				},
-				&x{
-					X: "Orca5",
-					Y: 24,
+				{
+					X:  "Orca5",
+					Y:  24,
 					Z1: 1551405784,
 				},
 			}
@@ -198,8 +198,8 @@ func TestInsert(t *testing.T) {
 
 		Convey("user-defined fields", func() {
 			o := x{
-				X: "Orca1",
-				Y: 20,
+				X:  "Orca1",
+				Y:  20,
 				Z1: 1551405784,
 			}
 			tbl := Table(db, "test").Debug()
@@ -212,8 +212,8 @@ func TestInsert(t *testing.T) {
 
 		Convey("on duplicate key update", func() {
 			o := x{
-				X: "Orca1",
-				Y: 20,
+				X:  "Orca1",
+				Y:  20,
 				Z1: 1551405784,
 			}
 			tbl := Table(db, "test").Debug()
@@ -234,8 +234,8 @@ func TestUpdate(t *testing.T) {
 
 		Convey("update", func() {
 			o := x{
-				X: "Orca1",
-				Y: 20,
+				X:  "Orca1",
+				Y:  20,
 				Z1: 1551405784,
 			}
 			tbl := Table(db, "test").Debug()
@@ -251,7 +251,7 @@ func TestUpdate(t *testing.T) {
 
 			n, err := tbl.Update(context.TODO(), map[string]interface{}{
 				"name": "OrcaUpdated",
-				"age": 88,
+				"age":  88,
 			}, Where("id = ?", 0))
 
 			So(err, ShouldBeNil)
@@ -263,7 +263,7 @@ func TestUpdate(t *testing.T) {
 
 			n, err := tbl.Update(context.TODO(), map[string]interface{}{
 				"name": "OrcaUpdatedFields",
-				"age": 88,
+				"age":  88,
 			}, Fields("name"), Where("id = ?", 0))
 
 			So(err, ShouldBeNil)
@@ -272,8 +272,8 @@ func TestUpdate(t *testing.T) {
 
 		Convey("update with user-defined fields", func() {
 			o := x{
-				X: "Orca1",
-				Y: 20,
+				X:  "Orca1",
+				Y:  20,
 				Z1: 1551405784,
 			}
 			tbl := Table(db, "test").Debug()
