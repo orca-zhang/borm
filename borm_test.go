@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
-	//"fmt"
+	"fmt"
 	"log"
 	"time"
 	"unsafe"
@@ -21,7 +21,7 @@ var (
 
 func init() {
 	var err error
-	db, err = sql.Open("mysql", "root:pwd@tcp(0.0.0.0:3306)/borm_test?charset=utf8mb4")
+	db, err = sql.Open("mysql", "borm_test:borm_test@tcp(139.224.113.114:3306)/borm_test?charset=utf8mb4")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,7 +65,6 @@ func BenchmarkNormalSelect(b *testing.B) {
 	}
 }
 
-/*
 func TestSelect(t *testing.T) {
 
 	Convey("normal", t, func() {
@@ -301,7 +300,6 @@ func TestDelete(t *testing.T) {
 		})
 	})
 }
-*/
 
 func TestScanner(t *testing.T) {
 	/*
