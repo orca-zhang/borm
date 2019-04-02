@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/borm/blob/master/LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/orca-zhang/borm)](https://goreportcard.com/report/github.com/orca-zhang/borm)
 
-- 📺 [WIP] borm is a beautiful orm library in Go.
+- 🏎️ 小而美的ORM库 (A Beautiful ORM library that is simple, fast and self-mock for Go)
 
 ### 背景
 
@@ -25,7 +25,7 @@
       - borm：all-in-one，单函数调用，参数直接传递你喜欢的“对象/map/对象数组/对象指针数组/任意数据类型”（同时便于mock）
     2. 使用reflect2，零使用ValueOf，并尽量少使用临时对象保证尽可能少的性能损耗和额外内存使用
     3. SQL-Like，无学习成本，不暴露SQL语句，尽最大可能避免语法问题的心智负担
-    4. 【**】支持自mock，内建低成本支持mock，无需外部库支持
+    4. **支持自mock，内建低成本支持mock，无需外部库支持**
 
 - TODO：
     1. 自动规整sql语法（条件可以无序传入）
