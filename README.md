@@ -1,10 +1,10 @@
-
 ### BORM
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/orca-zhang/borm)](https://goreportcard.com/report/github.com/orca-zhang/borm)
 [![Build Status](https://semaphoreci.com/api/v1/orca-zhang/borm/branches/master/shields_badge.svg)](https://semaphoreci.com/orca-zhang/borm)
 [![codecov](https://codecov.io/gh/orca-zhang/borm/branch/master/graph/badge.svg)](https://codecov.io/gh/orca-zhang/borm)
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/borm/blob/master/LICENSE)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Forca-zhang%2Fborm.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Forca-zhang%2Fborm?ref=badge_shield)
 
 - 🏎️ 小而美的ORM库 (A Beautiful ORM library that is simple, fast and self-mock for Go)
 
@@ -128,3 +128,7 @@ Where(Or(c, c, c))
 15. 【增强】支持事务
 
 16. 【增强】支持存储成map
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Forca-zhang%2Fborm.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Forca-zhang%2Fborm?ref=badge_large)
