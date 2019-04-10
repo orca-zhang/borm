@@ -158,7 +158,7 @@ func OnDuplicateKeyUpdate(keyVals map[string]interface{}) *onDuplicateKeyUpdateI
 	return &onDuplicateKeyUpdateItem{KVs: keyVals}
 }
 
-func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}) (int, error) {
+func (t *table) Select(ctx context.Context, res interface{}, args ...ormItem) (int, error) {
 	if len(args) <= 0 {
 		return 0, errors.New("argument 3 cannot be omitted")
 	}
