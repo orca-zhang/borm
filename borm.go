@@ -208,7 +208,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 	if item != nil {
 		// struct类型
 		if rtElem.Kind() == reflect.Struct {
-			if args[0].(ormItem).Type() == _fields {
+			if args[0].Type() == _fields {
 				args = args[1:]
 			}
 			// map类型
@@ -220,7 +220,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 		}
 
 		for _, arg := range args {
-			(arg).(ormItem).BuildArgs(&stmtArgs)
+			arg.BuildArgs(&stmtArgs)
 		}
 	} else {
 		item = &DataBindingItem{Type: rtElem}
@@ -237,7 +237,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 				item.Elem = res
 			}
 
-			if args[0].(ormItem).Type() == _fields {
+			if args[0].Type() == _fields {
 				m := t.getStructFieldMap(s)
 
 				for _, field := range args[0].(*fieldsItem).Fields {
@@ -248,7 +248,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 					})
 				}
 
-				(args[0]).(ormItem).BuildSQL(&sb)
+				(args[0]).BuildSQL(&sb)
 				args = args[1:]
 
 			} else {
@@ -282,7 +282,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 			// 其他类型
 		} else {
 			// 必须有fields且为1
-			if args[0].(ormItem).Type() != _fields {
+			if args[0].Type() != _fields {
 				return 0, errors.New("argument 3 need ONE Fields(\"name\") with ONE field")
 			}
 
@@ -305,8 +305,8 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 		fieldEscape(&sb, t.Name)
 
 		for _, arg := range args {
-			(arg).(ormItem).BuildSQL(&sb)
-			(arg).(ormItem).BuildArgs(&stmtArgs)
+			arg.BuildSQL(&sb)
+			arg.BuildArgs(&stmtArgs)
 		}
 
 		item.SQL = sb.String()
@@ -359,7 +359,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...interface{}
 	return count, err
 }
 
-func (t *table) Insert(ctx context.Context, objs interface{}, args ...interface{}) (int, error) {
+func (t *table) Insert(ctx context.Context, objs interface{}, args ...ormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Insert", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -420,7 +420,7 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...interface{
 	}
 
 	s := rtElem.(reflect2.StructType)
-	if len(args) > 0 && args[0].(ormItem).Type() == _fields {
+	if len(args) > 0 && args[0].Type() == _fields {
 		m := t.getStructFieldMap(s)
 
 		for _, field := range args[0].(*fieldsItem).Fields {
@@ -430,7 +430,7 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...interface{
 			}
 		}
 
-		(args[0]).(ormItem).BuildSQL(&sb)
+		(args[0]).BuildSQL(&sb)
 		args = args[1:]
 
 	} else {
@@ -489,8 +489,8 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...interface{
 
 	// on duplicate key update
 	for _, arg := range args {
-		(arg).(ormItem).BuildSQL(&sb)
-		(arg).(ormItem).BuildArgs(&stmtArgs)
+		arg.BuildSQL(&sb)
+		arg.BuildArgs(&stmtArgs)
 	}
 
 	if t.Cfg.Debug {
@@ -509,7 +509,7 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...interface{
 	return int(row), nil
 }
 
-func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}) (int, error) {
+func (t *table) Update(ctx context.Context, obj interface{}, args ...ormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Update", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -529,7 +529,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 	var stmtArgs []interface{}
 
 	if m, ok := obj.(map[string]interface{}); ok {
-		if args[0].(ormItem).Type() == _fields {
+		if args[0].Type() == _fields {
 			for _, field := range args[0].(*fieldsItem).Fields {
 				v := m[field]
 				if v != nil {
@@ -576,7 +576,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 
 		// Fields or KeyVals or None
 		s := rt.(reflect2.StructType)
-		if args[0].(ormItem).Type() == _fields {
+		if args[0].Type() == _fields {
 			m := t.getStructFieldMap(s)
 
 			for i, field := range args[0].(*fieldsItem).Fields {
@@ -624,8 +624,8 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 	}
 
 	for _, arg := range args {
-		(arg).(ormItem).BuildSQL(&sb)
-		(arg).(ormItem).BuildArgs(&stmtArgs)
+		arg.BuildSQL(&sb)
+		arg.BuildArgs(&stmtArgs)
 	}
 
 	if t.Cfg.Debug {
@@ -644,7 +644,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...interface{}
 	return int(row), nil
 }
 
-func (t *table) Delete(ctx context.Context, arg interface{}) (int, error) {
+func (t *table) Delete(ctx context.Context, arg ormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Delete", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -657,8 +657,8 @@ func (t *table) Delete(ctx context.Context, arg interface{}) (int, error) {
 	fieldEscape(&sb, t.Name)
 
 	var stmtArgs []interface{}
-	(arg).(ormItem).BuildSQL(&sb)
-	(arg).(ormItem).BuildArgs(&stmtArgs)
+	arg.BuildSQL(&sb)
+	arg.BuildArgs(&stmtArgs)
 
 	if t.Cfg.Debug {
 		log.Println(sb.String(), stmtArgs)
