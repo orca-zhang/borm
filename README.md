@@ -96,7 +96,7 @@
    </tr>
    <tr>
       <td rowspan="2">性能</td>
-      <td>较原生</td>
+      <td>较原生耗时</td>
       <td>1x</td>
       <td>2~3x</td>
       <td>2~3x</td>
