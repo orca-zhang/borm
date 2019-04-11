@@ -68,6 +68,7 @@ func Table(db dbIFace, name string, ctx ...context.Context) *table {
 	return &table{
 		DB:   db,
 		Name: name,
+		ctx:  context.Backgroud(),
 	}
 }
 
