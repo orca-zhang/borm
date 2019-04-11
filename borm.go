@@ -622,7 +622,7 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 		log.Println(sb.String(), stmtArgs)
 	}
 
-	res, err := t.DB.ExecContext(t.t.ctx, sb.String(), stmtArgs...)
+	res, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
