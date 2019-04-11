@@ -1,27 +1,10 @@
 /*
-   borm is a beautiful orm library for Go.
+   borm is a better orm library for Go.
 
-   MIT License
+  Copyright (c) 2019 <http://ez8.co> <orca.zhang@yahoo.com>
 
-   Copyright (c) 2019 <orca.zhang@yahoo.com>
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in all
-   copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-   SOFTWARE.
+  This library is released under the MIT License.
+  Please see LICENSE file or visit https://github.com/orca-zhang/borm for details.
 */
 
 package borm
@@ -74,7 +57,14 @@ type Config struct {
 }
 
 // Table .
-func Table(db dbIFace, name string) *table {
+func Table(db dbIFace, name string, ctx ...context.Context) *table {
+	if len(ctx) > 0 {
+		return &table{
+			DB:   db,
+			Name: name,
+			ctx:  ctx[0],
+		}
+	}
 	return &table{
 		DB:   db,
 		Name: name,
@@ -158,7 +148,7 @@ func OnDuplicateKeyUpdate(keyVals map[string]interface{}) *onDuplicateKeyUpdateI
 	return &onDuplicateKeyUpdateItem{KVs: keyVals}
 }
 
-func (t *table) Select(ctx context.Context, res interface{}, args ...ormItem) (int, error) {
+func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 	if len(args) <= 0 {
 		return 0, errors.New("argument 3 cannot be omitted")
 	}
@@ -323,7 +313,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...ormItem) (i
 
 	if !isArray {
 		// fire
-		err := t.DB.QueryRowContext(ctx, item.SQL, stmtArgs...).Scan(item.Cols...)
+		err := t.DB.QueryRowContext(t.ctx, item.SQL, stmtArgs...).Scan(item.Cols...)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return 0, nil
@@ -334,7 +324,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...ormItem) (i
 	}
 
 	// fire
-	rows, err := t.DB.QueryContext(ctx, item.SQL, stmtArgs...)
+	rows, err := t.DB.QueryContext(t.ctx, item.SQL, stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -359,7 +349,7 @@ func (t *table) Select(ctx context.Context, res interface{}, args ...ormItem) (i
 	return count, err
 }
 
-func (t *table) Insert(ctx context.Context, objs interface{}, args ...ormItem) (int, error) {
+func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Insert", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -497,7 +487,7 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...ormItem) (
 		log.Println(sb.String(), stmtArgs)
 	}
 
-	res, err := t.DB.ExecContext(ctx, sb.String(), stmtArgs...)
+	res, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -509,7 +499,7 @@ func (t *table) Insert(ctx context.Context, objs interface{}, args ...ormItem) (
 	return int(row), nil
 }
 
-func (t *table) Update(ctx context.Context, obj interface{}, args ...ormItem) (int, error) {
+func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Update", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -632,7 +622,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...ormItem) (i
 		log.Println(sb.String(), stmtArgs)
 	}
 
-	res, err := t.DB.ExecContext(ctx, sb.String(), stmtArgs...)
+	res, err := t.DB.ExecContext(t.t.ctx, sb.String(), stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -644,7 +634,7 @@ func (t *table) Update(ctx context.Context, obj interface{}, args ...ormItem) (i
 	return int(row), nil
 }
 
-func (t *table) Delete(ctx context.Context, arg ormItem) (int, error) {
+func (t *table) Delete(arg ormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Delete", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -664,7 +654,7 @@ func (t *table) Delete(ctx context.Context, arg ormItem) (int, error) {
 		log.Println(sb.String(), stmtArgs)
 	}
 
-	res, err := t.DB.ExecContext(ctx, sb.String(), stmtArgs...)
+	res, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -708,6 +698,7 @@ type table struct {
 	DB   dbIFace
 	Name string
 	Cfg  Config
+	ctx  context.Context
 }
 
 func fieldEscape(sb *strings.Builder, field string) {
