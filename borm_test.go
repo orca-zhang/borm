@@ -968,7 +968,7 @@ func test(db *sql.DB) (x, int, error) {
 	var o x
 	tbl := Table(db, "test").Debug()
 
-	n, err := tbl.Select(context.TODO(), &o, Where("`id` >= ?", 1), Limit(100))
+	n, err := tbl.Select(&o, Where("`id` >= ?", 1), Limit(100))
 
 	So(err, ShouldBeNil)
 	So(n, ShouldEqual, 1)
