@@ -44,7 +44,7 @@ func BenchmarkBormSelect(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var o []x
 		tbl := Table(db, "test").Reuse()
-		tbl.Select(context.TODO(), &o, Where("`id` >= 1"))
+		tbl.Select(&o, Where("`id` >= 1"))
 	}
 }
 
@@ -74,7 +74,7 @@ func TestSelect(t *testing.T) {
 			tbl := Table(db, "test").Reuse()
 
 			for i := 0; i < 10; i++ {
-				n, err := tbl.Select(context.TODO(), &o, Where("`id` >= ?", 1), Limit(100))
+				n, err := tbl.Select(&o, Where("`id` >= ?", 1), Limit(100))
 
 				So(err, ShouldBeNil)
 				So(n, ShouldEqual, 1)
@@ -86,7 +86,7 @@ func TestSelect(t *testing.T) {
 			var o []x
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(context.TODO(), &o, Where(Gte("id", 0)), OrderBy("id"), Limit(0, 100))
+			n, err := tbl.Select(&o, Where(Gte("id", 0)), OrderBy("id"), Limit(0, 100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
@@ -97,7 +97,7 @@ func TestSelect(t *testing.T) {
 			var o []*x
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(context.TODO(), &o, Where(In("id", []interface{}{1, 2, 3, 4}...)))
+			n, err := tbl.Select(&o, Where(In("id", []interface{}{1, 2, 3, 4}...)))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
@@ -111,7 +111,7 @@ func TestSelect(t *testing.T) {
 			var o c
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(context.TODO(), &o, Limit(100))
+			n, err := tbl.Select(&o, Limit(100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -123,7 +123,7 @@ func TestSelect(t *testing.T) {
 			var o x
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(context.TODO(), &o, Fields("name", "ctime", "age"), Where("`id` >= ?", 1), Limit(100))
+			n, err := tbl.Select(&o, Fields("name", "ctime", "age"), Where("`id` >= ?", 1), Limit(100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -134,7 +134,7 @@ func TestSelect(t *testing.T) {
 			var cnt int64
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(context.TODO(), &cnt, Fields("count(1)"), Where("`id` >= ?", 1), Limit(100))
+			n, err := tbl.Select(&cnt, Fields("count(1)"), Where("`id` >= ?", 1), Limit(100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -155,7 +155,7 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(context.TODO(), &o)
+			n, err := tbl.Insert(&o)
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -169,7 +169,7 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").ReplaceInto().Debug()
 
-			n, err := tbl.Insert(context.TODO(), &o)
+			n, err := tbl.Insert(&o)
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -190,7 +190,7 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").InsertIgnore().Debug()
 
-			n, err := tbl.Insert(context.TODO(), &o)
+			n, err := tbl.Insert(&o)
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
@@ -204,7 +204,7 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(context.TODO(), &o, Fields("name", "ctime", "age"))
+			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -218,7 +218,7 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(context.TODO(), &o, Fields("name", "ctime", "age"), OnDuplicateKeyUpdate(map[string]interface{}{
+			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnDuplicateKeyUpdate(map[string]interface{}{
 				"name": "OnDuplicateKeyUpdate",
 			}))
 
@@ -240,7 +240,7 @@ func TestUpdate(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Update(context.TODO(), &o, Where("id = ?", 0))
+			n, err := tbl.Update(&o, Where("id = ?", 0))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -249,7 +249,7 @@ func TestUpdate(t *testing.T) {
 		Convey("update with map", func() {
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Update(context.TODO(), map[string]interface{}{
+			n, err := tbl.Update(map[string]interface{}{
 				"name": "OrcaUpdated",
 				"age":  88,
 			}, Where("id = ?", 0))
@@ -261,7 +261,7 @@ func TestUpdate(t *testing.T) {
 		Convey("update with map & Fields", func() {
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Update(context.TODO(), map[string]interface{}{
+			n, err := tbl.Update(map[string]interface{}{
 				"name": "OrcaUpdatedFields",
 				"age":  88,
 			}, Fields("name"), Where("id = ?", 0))
@@ -278,7 +278,7 @@ func TestUpdate(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Update(context.TODO(), &o, Fields("name", "ctime", "age"), Where("id = ?", 0))
+			n, err := tbl.Update(&o, Fields("name", "ctime", "age"), Where("id = ?", 0))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -293,7 +293,7 @@ func TestDelete(t *testing.T) {
 		Convey("single delete", func() {
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Delete(context.TODO(), Where("`id`=0"))
+			n, err := tbl.Delete(Where("`id`=0"))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
