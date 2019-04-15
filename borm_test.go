@@ -1045,7 +1045,7 @@ func TestMock(t *testing.T) {
 		Convey("test Insert", func() {
 			// 必须在_test.go里面设置mock
 			// 注意方法名需要带包名
-			BormMock("test", "Insert", "*.test", "", "", nil, 10, nil)
+			BormMock("test", "Insert", "*.testInsert", "", "", nil, 10, nil)
 
 			// 调用被测试函数
 			n1, err := testInsert(db)
@@ -1061,7 +1061,7 @@ func TestMock(t *testing.T) {
 		Convey("test Update", func() {
 			// 必须在_test.go里面设置mock
 			// 注意方法名需要带包名
-			BormMock("test", "Update", "*.test", "", "", nil, 233, nil)
+			BormMock("test", "Update", "*.testUpdate", "", "", nil, 233, nil)
 
 			// 调用被测试函数
 			n1, err := testUpdate(db)
@@ -1077,7 +1077,7 @@ func TestMock(t *testing.T) {
 		Convey("test Delete", func() {
 			// 必须在_test.go里面设置mock
 			// 注意方法名需要带包名
-			BormMock("test", "Delete", "*.test", "", "", nil, 88, nil)
+			BormMock("test", "Delete", "*.testDelete", "", "", nil, 88, nil)
 
 			// 调用被测试函数
 			n1, err := testDelete(db)
@@ -1093,7 +1093,7 @@ func TestMock(t *testing.T) {
 		Convey("test any", func() {
 			// 必须在_test.go里面设置mock
 			// 注意方法名需要带包名
-			BormMock("test", "", "*.test", "", "", nil, 111, nil)
+			BormMock("test", "", "", "", "", nil, 111, nil)
 
 			// 调用被测试函数
 			n1, err := testDelete(db)
@@ -1113,7 +1113,7 @@ func TestMock(t *testing.T) {
 		Convey("test none", func() {
 			// 必须在_test.go里面设置mock
 			// 注意方法名需要带包名
-			BormMock("test", "", "*.test", "", "", nil, 111, nil)
+			BormMock("test", "", "", "", "", nil, 111, nil)
 
 			// 检查是否未全部命中
 			err := BormMockFinish()
