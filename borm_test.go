@@ -120,7 +120,7 @@ func TestSelect(t *testing.T) {
 			var o c
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&o, GroupBy("id", `name`), Limit(100))
+			n, err := tbl.Select(&o, GroupBy("id", `name`), Having(Gt("id", 0)), Limit(100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -1047,6 +1047,14 @@ func TestMisc(t *testing.T) {
 		})
 	})
 
+	Convey("Having", t, func() {
+		Convey("Having panic", func() {
+			So(PanicCheck(func () {
+				Having()
+			}), ShouldNotBeNil)
+		})
+	})
+
 	Convey("Limit", t, func() {
 		Convey("Limit panic", func() {
 			So(PanicCheck(func () {
@@ -1072,7 +1080,7 @@ func TestMisc(t *testing.T) {
 			t := Table(db, "test", context.TODO())
 
 			var o x
-			_, err := t.Select(o)
+			_, err := t.Select(o, Where("`id` >= ?", 1))
 			So(err, ShouldNotBeNil)
 		})
 	})
@@ -1128,6 +1136,10 @@ func TestMisc(t *testing.T) {
 		So(n, ShouldEqual, 0)
 	})
 
+	Convey("toUnix - leap year", t, func() {
+		So(toUnix(2020, 3, 1, 0, 0, 0), ShouldEqual, 1582992000)
+	})
+
 	Convey("fieldsItem - BuildArgs", t, func() {
 		var stmtArgs []interface{}
 		var f fieldsItem
@@ -1138,5 +1150,20 @@ func TestMisc(t *testing.T) {
 	Convey("onDuplicateKeyUpdateItem - Type", t, func() {
 		var odku onDuplicateKeyUpdateItem
 		So(odku.Type(), ShouldEqual, _onDuplicateKeyUpdate)
+	})
+
+	Convey("havingItem - Type", t, func() {
+		var having havingItem
+		So(having.Type(), ShouldEqual, _having)
+	})
+
+	Convey("orderByItem - Type", t, func() {
+		var orderBy orderByItem
+		So(orderBy.Type(), ShouldEqual, _orderBy)
+	})
+
+	Convey("limitItem - Type", t, func() {
+		var limit limitItem
+		So(limit.Type(), ShouldEqual, _limit)
 	})
 }
