@@ -83,7 +83,7 @@ func TestSelect(t *testing.T) {
 			tbl := Table(db, "test").Reuse()
 
 			for i := 0; i < 10; i++ {
-				n, err := tbl.Select(&o, Where("`id` >= ?", 1), Limit(100))
+				n, err := tbl.Select(&o, Where("`id` >= ?", 1), GroupBy("id"), Having("id >= ?", 0), Limit(100))
 
 				So(err, ShouldBeNil)
 				So(n, ShouldEqual, 1)
@@ -229,6 +229,7 @@ func TestInsert(t *testing.T) {
 
 			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnDuplicateKeyUpdate(map[string]interface{}{
 				"name": "OnDuplicateKeyUpdate",
+				"age" : 29,
 			}))
 
 			So(err, ShouldBeNil)
@@ -993,9 +994,33 @@ func test(db *sql.DB) (x, int, error) {
 	return o, n, err
 }
 
+func testInsert(db *sql.DB) (int, error) {
+	var o x
+	tbl := Table(db, "test").Debug()
+
+	n, err := tbl.Insert(&o)
+	return n, err
+}
+
+func testUpdate(db *sql.DB) (int, error) {
+	var o x
+	tbl := Table(db, "test").Debug()
+
+	n, err := tbl.Update(&o, Where("`id` >= ?", 1), Limit(1))
+	return n, err
+}
+
+func testDelete(db *sql.DB) (int, error) {
+	var o x
+	tbl := Table(db, "test").Debug()
+
+	n, err := tbl.Delete(Where("`id`=0"), Limit(1))
+	return n, err
+}
+
 func TestMock(t *testing.T) {
 	Convey("Mock one func", t, func() {
-		Convey("tests", func() {
+		Convey("test Select", func() {
 			o := x{
 				X:  "Orca1",
 				Y:  20,
@@ -1012,6 +1037,88 @@ func TestMock(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 1)
 			So(o1, ShouldResemble, o)
+
+			// 检查是否全部命中
+			err = BormMockFinish()
+			So(err, ShouldBeNil)
+		})
+
+		Convey("test Insert", func() {
+			// 必须在_test.go里面设置mock
+			// 注意方法名需要带包名
+			BormMock("test", "Insert", "*.test", "", "", nil, 10, nil)
+
+			// 调用被测试函数
+			n1, err := testInsert(db)
+
+			So(err, ShouldBeNil)
+			So(n1, ShouldEqual, 10)
+
+			// 检查是否全部命中
+			err = BormMockFinish()
+			So(err, ShouldBeNil)
+		})
+
+		Convey("test Update", func() {
+			// 必须在_test.go里面设置mock
+			// 注意方法名需要带包名
+			BormMock("test", "Update", "*.test", "", "", nil, 233, nil)
+
+			// 调用被测试函数
+			n1, err := testUpdate(db)
+
+			So(err, ShouldBeNil)
+			So(n1, ShouldEqual, 233)
+
+			// 检查是否全部命中
+			err = BormMockFinish()
+			So(err, ShouldBeNil)
+		})
+
+		Convey("test Delete", func() {
+			// 必须在_test.go里面设置mock
+			// 注意方法名需要带包名
+			BormMock("test", "Delete", "*.test", "", "", nil, 88, nil)
+
+			// 调用被测试函数
+			n1, err := testDelete(db)
+
+			So(err, ShouldBeNil)
+			So(n1, ShouldEqual, 88)
+
+			// 检查是否全部命中
+			err = BormMockFinish()
+			So(err, ShouldBeNil)
+		})
+
+		Convey("test any", func() {
+			// 必须在_test.go里面设置mock
+			// 注意方法名需要带包名
+			BormMock("test", "", "*.test", "", "", nil, 111, nil)
+
+			// 调用被测试函数
+			n1, err := testDelete(db)
+
+			So(err, ShouldBeNil)
+			So(n1, ShouldEqual, 111)
+
+			// 检查是否全部命中
+			err = BormMockFinish()
+			So(err, ShouldNotBeNil)
+
+			// 检查是否全部命中
+			err = BormMockFinish()
+			So(err, ShouldBeNil)
+		})
+
+		Convey("test none", func() {
+			// 必须在_test.go里面设置mock
+			// 注意方法名需要带包名
+			BormMock("test", "", "*.test", "", "", nil, 111, nil)
+
+			// 检查是否未全部命中
+			err := BormMockFinish()
+			So(err, ShouldNotBeNil)
 
 			// 检查是否全部命中
 			err = BormMockFinish()
@@ -1137,7 +1244,7 @@ func TestMisc(t *testing.T) {
 	})
 
 	Convey("toUnix - leap year", t, func() {
-		So(toUnix(2020, 3, 1, 0, 0, 0), ShouldEqual, 1582992000)
+		So(toUnix(2020, 3, 1, 0, 0, 0), ShouldEqual, 1583020800)
 	})
 
 	Convey("fieldsItem - BuildArgs", t, func() {
