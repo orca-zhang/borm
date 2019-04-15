@@ -509,10 +509,7 @@ func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
 		return 0, err
 	}
 
-	row, err := res.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
+	row, _ := res.RowsAffected()
 	return int(row), nil
 }
 
@@ -643,10 +640,7 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 		return 0, err
 	}
 
-	row, err := res.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
+	row, _ := res.RowsAffected()
 	return int(row), nil
 }
 
@@ -682,10 +676,7 @@ func (t *table) Delete(args ...ormItem) (int, error) {
 		return 0, err
 	}
 
-	row, err := res.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
+	row, _ := res.RowsAffected()
 	return int(row), nil
 }
 
