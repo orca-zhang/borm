@@ -36,6 +36,15 @@ type x struct {
 	Z3 int64     `borm:"ctime3"`
 }
 
+type x1 struct {
+	X     string    `borm:"name"`
+	ctime int64
+}
+
+func (x *x1) CTime() int64 {
+	return x.ctime
+}
+
 type c struct {
 	C int64 `borm:"count(1)"`
 }
@@ -86,7 +95,7 @@ func TestSelect(t *testing.T) {
 			var o []x
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&o, Where(Gte("id", 0)), OrderBy("id"), Limit(0, 100))
+			n, err := tbl.Select(&o, Where(Gte("id", 0)), OrderBy("id", "name"), Limit(0, 100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
@@ -111,7 +120,7 @@ func TestSelect(t *testing.T) {
 			var o c
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&o, Limit(100))
+			n, err := tbl.Select(&o, GroupBy("id", `name`), Limit(100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -264,7 +273,7 @@ func TestUpdate(t *testing.T) {
 			n, err := tbl.Update(map[string]interface{}{
 				"name": "OrcaUpdatedFields",
 				"age":  88,
-			}, Fields("name"), Where("id = ?", 0))
+			}, Fields("name", "age"), Where("id = ?", 0))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -294,6 +303,15 @@ func TestDelete(t *testing.T) {
 			tbl := Table(db, "test").Debug()
 
 			n, err := tbl.Delete(Where("`id`=0"))
+
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThan, 0)
+		})
+
+		Convey("bulk delete", func() {
+			tbl := Table(db, "test").Debug()
+
+			n, err := tbl.Delete(Where("`id`=0"), Limit(100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -999,5 +1017,126 @@ func TestMock(t *testing.T) {
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
+	})
+}
+
+func PanicCheck(f func ()) (err interface{}) {
+	defer func() {
+		if t := recover(); t != nil {
+			err = t
+		}
+	}()
+	f()
+	return
+}
+
+func TestMisc(t *testing.T) {
+	Convey("Table", t, func() {
+		Convey("Table with context", func() {
+			t := Table(db, "test", context.TODO())
+			t.UseNameWhenTagEmpty()
+			t.ToTimestamp()
+		})
+	})
+
+	Convey("Where", t, func() {
+		Convey("Where panic", func() {
+			So(PanicCheck(func () {
+				Where()
+			}), ShouldNotBeNil)
+		})
+	})
+
+	Convey("Limit", t, func() {
+		Convey("Limit panic", func() {
+			So(PanicCheck(func () {
+				Limit()
+			}), ShouldNotBeNil)
+		})
+		Convey("Limit panic 2", func() {
+			So(PanicCheck(func () {
+				Limit(1, 2, 3)
+			}), ShouldNotBeNil)
+		})
+	})
+
+	Convey("Select", t, func() {
+		Convey("Select arg len err", func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x
+			_, err := t.Select(&o)
+			So(err, ShouldNotBeNil)
+		})
+		Convey("Select arg type err", func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x
+			_, err := t.Select(o)
+			So(err, ShouldNotBeNil)
+		})
+	})
+
+	Convey("Select - Reuse", t, func() {
+		// TODO
+	})
+
+	Convey("Select - UseNameWhenTagEmpty", t, func() {
+		t := Table(db, "test", context.TODO())
+
+		var o x1
+		_, err := t.Select(&o)
+		So(err, ShouldBeNil)
+		So(o.CTime(), ShouldEqual, 0)
+
+		_, err = t.UseNameWhenTagEmpty().Select(&o)
+		So(err, ShouldBeNil)
+		So(o.CTime(), ShouldNotEqual, 0)
+	})
+
+	Convey("Select - other type with Fields", t, func() {
+		t := Table(db, "test", context.TODO())
+
+		var cnt int64
+		_, err := t.Select(&cnt, Where("`id` >= ?", 1))
+		So(err, ShouldNotBeNil)
+
+		_, err = t.Select(&cnt, Fields())
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Select - empty single result", t, func() {
+		t := Table(db, "test", context.TODO())
+
+		var o x
+		n, err := t.Select(&o, Where("`id` >= ?", 1011))
+		So(err, ShouldBeNil)
+		So(n, ShouldEqual, 0)
+	})
+
+	Convey("Select - sql error", t, func() {
+		t := Table(db, "test", context.TODO())
+
+		var o x
+		n, err := t.Select(&o, Where("xxxx"))
+		So(err, ShouldNotBeNil)
+		So(n, ShouldEqual, 0)
+
+		var o1 []x
+		n, err = t.Select(&o1, Where("xxxx"))
+		So(err, ShouldNotBeNil)
+		So(n, ShouldEqual, 0)
+	})
+
+	Convey("fieldsItem - BuildArgs", t, func() {
+		var stmtArgs []interface{}
+		var f fieldsItem
+		f.BuildArgs(&stmtArgs)
+		So(len(stmtArgs), ShouldEqual, 0)
+	})
+
+	Convey("onDuplicateKeyUpdateItem - Type", t, func() {
+		var odku onDuplicateKeyUpdateItem
+		So(odku.Type(), ShouldEqual, _onDuplicateKeyUpdate)
 	})
 }
