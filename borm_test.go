@@ -1594,7 +1594,7 @@ func TestMisc(t *testing.T) {
 				Num: "str", 
 				Err: strconv.ErrSyntax,
 			}
-			So(strconvErr(err), ShouldEqual, err)
+			So(strconvErr(err), ShouldEqual, err.Err)
 		})
 		Convey("normal err", func() {
 			err := errors.New("xxx")
