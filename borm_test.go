@@ -1011,7 +1011,6 @@ func testUpdate(db *sql.DB) (int, error) {
 }
 
 func testDelete(db *sql.DB) (int, error) {
-	var o x
 	tbl := Table(db, "test").Debug()
 
 	n, err := tbl.Delete(Where("`id`=0"), Limit(1))
