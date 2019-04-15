@@ -1351,20 +1351,20 @@ func TestMisc(t *testing.T) {
 			}
 			n, err := t.Update(&o, Where("id>=0"), Limit(1))
 			So(err, ShouldBeNil)
-			So(n, ShouldBeGreaterThan, 0)
+			So(n, ShouldEqual, 1)
 
 			o.X += "1"
 			n, err = t.UseNameWhenTagEmpty().Update(&o, Where("id>=0"), Limit(1))
 			So(err, ShouldBeNil)
-			So(n, ShouldBeGreaterThan, 0)
+			So(n, ShouldEqual, 1)
 
 			o.ctime += 1
-			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("ctime"), Where("id>=0"), Limit(1))
+			n, err = t.UseNameWhenTagEmpty().Debug().Update(&o, Fields("ctime"), Where("id>=0"), Limit(1))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 		})
 	})
-	
+
 	Convey("Delete", t, func() {
 		Convey("Delete - arg len err", func() {
 			t := Table(db, "test", context.TODO())
