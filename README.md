@@ -163,7 +163,7 @@
 - 查询
    ``` golang
    // o可以是对象/slice/ptr slice
-   n, err = t.Select(&o, Where("name = ?", name), GroupBy("id"), Having(Gt("id"), 0), OrderBy("id". "name"), Limit(0, 100))
+   n, err = t.Select(&o, Where("name = ?", name), GroupBy("id"), Having(Gt("id"), 0), OrderBy("id", "name"), Limit(0, 100))
 
    // 使用基本类型获取条目数（n的值为1，因为结果只有1条）
    var cnt int64
