@@ -961,7 +961,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(i, ShouldEqual, int(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to int8", func() {
@@ -974,7 +974,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(i, ShouldEqual, int8(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to int16", func() {
@@ -987,7 +987,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(i, ShouldEqual, int16(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to int32", func() {
@@ -1000,7 +1000,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(i, ShouldEqual, int32(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to uint", func() {
@@ -1013,7 +1013,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(i, ShouldEqual, uint(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to uint8", func() {
@@ -1026,7 +1026,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(i, ShouldEqual, uint8(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to uint16", func() {
@@ -1039,7 +1039,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(i, ShouldEqual, uint16(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to uint32", func() {
@@ -1052,7 +1052,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(i, ShouldEqual, uint32(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to uint64", func() {
@@ -1078,7 +1078,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(f, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(f, ShouldEqual, float32(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATE) to float64", func() {
@@ -1091,7 +1091,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("2019-03-01"))
 			So(err, ShouldBeNil)
-			So(f, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+			So(f, ShouldEqual, float64(time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 		})
 
 		Convey("string (DATETIME) to int", func() {
