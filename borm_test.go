@@ -1086,11 +1086,11 @@ func TestMisc(t *testing.T) {
 
 		var o x1
 		_, err := t.Select(&o)
-		So(err, ShouldBeNil)
+		So(err, ShouldNotBeNil)
 		So(o.CTime(), ShouldEqual, 0)
 
 		_, err = t.UseNameWhenTagEmpty().Select(&o)
-		So(err, ShouldBeNil)
+		So(err, ShouldNotBeNil)
 		So(o.CTime(), ShouldNotEqual, 0)
 	})
 
