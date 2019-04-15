@@ -1103,10 +1103,6 @@ func TestMock(t *testing.T) {
 
 			// 检查是否全部命中
 			err = BormMockFinish()
-			So(err, ShouldNotBeNil)
-
-			// 检查是否全部命中
-			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
 
