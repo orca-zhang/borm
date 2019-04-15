@@ -701,7 +701,7 @@ func (t *table) inputArgs(stmtArgs *[]interface{}, cols []reflect2.StructField, 
 
 		// 时间类型特殊处理
 		if col.Type().String() == "time.Time" {
-			if !t.Cfg.ToTimestamp {
+			if t.Cfg.ToTimestamp {
 				v = v.(*time.Time).Unix()
 			} else {
 				v = v.(*time.Time).Format(_timeLayout)
@@ -1352,12 +1352,16 @@ func checkMock(tbl, fun, caller, file, pkg string) (mocked bool, data interface{
 	return false, nil, 0, nil
 }
 
-// BormMock .
-func BormMock(tbl, fun, caller, file, pkg string, data interface{}, ret int, err error) {
-	_, fileName, _, _ := runtime.Caller(1)
+func checkInTestFile(fileName string) {
 	if !strings.HasSuffix(fileName, "_test.go") {
 		panic("DONT USE THIS FUNCTION IN PRODUCTION ENVIRONMENT!")
 	}
+}
+
+// BormMock .
+func BormMock(tbl, fun, caller, file, pkg string, data interface{}, ret int, err error) {
+	_, fileName, _, _ := runtime.Caller(1)
+	checkInTestFile(fileName)
 
 	config.Mock = true
 

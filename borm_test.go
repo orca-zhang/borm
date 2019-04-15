@@ -1171,71 +1171,97 @@ func TestMisc(t *testing.T) {
 	})
 
 	Convey("Select", t, func() {
-		Convey("Select arg len err", func() {
+		Convey("Select - arg len err", func() {
 			t := Table(db, "test", context.TODO())
 
 			var o x
 			_, err := t.Select(&o)
 			So(err, ShouldNotBeNil)
 		})
-		Convey("Select arg type err", func() {
+		
+		Convey("Select - arg type err", func() {
 			t := Table(db, "test", context.TODO())
 
 			var o x
 			_, err := t.Select(o, Where("`id` >= ?", 1))
 			So(err, ShouldNotBeNil)
 		})
+
+		Convey("Select - Reuse", t, func() {
+			// TODO
+		})
+
+		Convey("Select - UseNameWhenTagEmpty", t, func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x1
+			_, err := t.Select(&o, Where("`id` >= ?", 1))
+			So(err, ShouldBeNil)
+			So(o.CTime(), ShouldEqual, 0)
+
+			_, err = t.UseNameWhenTagEmpty().Select(&o, Where("`id` >= ?", 1))
+			So(err, ShouldBeNil)
+			So(o.CTime(), ShouldNotEqual, 0)
+		})
+
+		Convey("Select - other type with Fields", t, func() {
+			t := Table(db, "test", context.TODO())
+
+			var cnt int64
+			_, err := t.Select(&cnt, Where("`id` >= ?", 1))
+			So(err, ShouldNotBeNil)
+
+			_, err = t.Select(&cnt, Fields())
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("Select - empty single result", t, func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x
+			n, err := t.Select(&o, Where("`id` >= ?", 1011))
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 0)
+		})
+
+		Convey("Select - sql error", t, func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x
+			n, err := t.Select(&o, Where("xxxx"))
+			So(err, ShouldNotBeNil)
+			So(n, ShouldEqual, 0)
+
+			var o1 []x
+			n, err = t.Select(&o1, Where("xxxx"))
+			So(err, ShouldNotBeNil)
+			So(n, ShouldEqual, 0)
+		})
+
+		Convey("Select - scan error", t, func() {
+			t := Table(db, "test", context.TODO())
+
+			var o struct {
+				Name struct {
+					I int64
+				} `borm:"name"`
+			}
+			n, err := t.Select(&o, Where(Lt("id", 100), Like("name", "Or%")), Limit(1))
+			So(err, ShouldNotBeNil)
+			So(n, ShouldEqual, 0)
+		})
 	})
-
-	Convey("Select - Reuse", t, func() {
-		// TODO
-	})
-
-	Convey("Select - UseNameWhenTagEmpty", t, func() {
-		t := Table(db, "test", context.TODO())
-
-		var o x1
-		_, err := t.Select(&o, Where("`id` >= ?", 1))
-		So(err, ShouldBeNil)
-		So(o.CTime(), ShouldEqual, 0)
-
-		_, err = t.UseNameWhenTagEmpty().Select(&o, Where("`id` >= ?", 1))
-		So(err, ShouldBeNil)
-		So(o.CTime(), ShouldNotEqual, 0)
-	})
-
-	Convey("Select - other type with Fields", t, func() {
-		t := Table(db, "test", context.TODO())
-
-		var cnt int64
-		_, err := t.Select(&cnt, Where("`id` >= ?", 1))
-		So(err, ShouldNotBeNil)
-
-		_, err = t.Select(&cnt, Fields())
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Select - empty single result", t, func() {
+	
+	Convey("Insert - arg type err", func() {
 		t := Table(db, "test", context.TODO())
 
 		var o x
-		n, err := t.Select(&o, Where("`id` >= ?", 1011))
-		So(err, ShouldBeNil)
-		So(n, ShouldEqual, 0)
-	})
-
-	Convey("Select - sql error", t, func() {
-		t := Table(db, "test", context.TODO())
-
-		var o x
-		n, err := t.Select(&o, Where("xxxx"))
+		_, err := t.Insert(o, Where("`id` >= ?", 1))
 		So(err, ShouldNotBeNil)
-		So(n, ShouldEqual, 0)
 
-		var o1 []x
-		n, err = t.Select(&o1, Where("xxxx"))
+		var i int64
+		_, err = t.Insert(&i, Where("`id` >= ?", 1))
 		So(err, ShouldNotBeNil)
-		So(n, ShouldEqual, 0)
 	})
 
 	Convey("toUnix - leap year", t, func() {
@@ -1267,5 +1293,18 @@ func TestMisc(t *testing.T) {
 	Convey("limitItem - Type", t, func() {
 		var limit limitItem
 		So(limit.Type(), ShouldEqual, _limit)
+	})
+
+	Convey("checkInTestFile", t, func() {
+		Convey("checkInTestFile normal", func() {
+			So(PanicCheck(func () {
+				checkInTestFile("aaa_test.go")
+			}), ShouldBeNil)
+		})
+		Convey("checkInTestFile panic", func() {
+			So(PanicCheck(func () {
+				checkInTestFile("aaa.go")
+			}), ShouldNotBeNil)
+		})
 	})
 }
