@@ -625,7 +625,6 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 				cols = append(cols, f)
 			}
 		}
-		log.Println(sb.String(), stmtArgs)
 
 		t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(obj))
 	}
