@@ -302,7 +302,7 @@ func TestDelete(t *testing.T) {
 		Convey("single delete", func() {
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Delete(Where("`id`=0"))
+			n, err := tbl.Delete(Where("`id`=0"), Limit(1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -311,7 +311,7 @@ func TestDelete(t *testing.T) {
 		Convey("bulk delete", func() {
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Delete(Where("`id`=0"), Limit(100))
+			n, err := tbl.Delete(Where("`id`=0"))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -1085,12 +1085,12 @@ func TestMisc(t *testing.T) {
 		t := Table(db, "test", context.TODO())
 
 		var o x1
-		_, err := t.Select(&o)
-		So(err, ShouldNotBeNil)
+		_, err := t.Select(&o, Where("`id` >= ?", 1))
+		So(err, ShouldBeNil)
 		So(o.CTime(), ShouldEqual, 0)
 
-		_, err = t.UseNameWhenTagEmpty().Select(&o)
-		So(err, ShouldNotBeNil)
+		_, err = t.UseNameWhenTagEmpty().Select(&o, Where("`id` >= ?", 1))
+		So(err, ShouldBeNil)
 		So(o.CTime(), ShouldNotEqual, 0)
 	})
 
