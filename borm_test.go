@@ -170,6 +170,20 @@ func TestInsert(t *testing.T) {
 			So(n, ShouldEqual, 1)
 		})
 
+		Convey("single insert ToTimestamp", func() {
+			o := x{
+				X:  "Orca1",
+				Y:  20,
+				Z1: 1551405784,
+			}
+			tbl := Table(db, "test").Debug().ToTimestamp()
+
+			n, err := tbl.Insert(&o)
+
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+		})
+
 		Convey("single replace", func() {
 			o := x{
 				X:  "Orca1",
@@ -1187,11 +1201,11 @@ func TestMisc(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 
-		Convey("Select - Reuse", t, func() {
+		Convey("Select - Reuse", func() {
 			// TODO
 		})
 
-		Convey("Select - UseNameWhenTagEmpty", t, func() {
+		Convey("Select - UseNameWhenTagEmpty", func() {
 			t := Table(db, "test", context.TODO())
 
 			var o x1
@@ -1202,9 +1216,13 @@ func TestMisc(t *testing.T) {
 			_, err = t.UseNameWhenTagEmpty().Select(&o, Where("`id` >= ?", 1))
 			So(err, ShouldBeNil)
 			So(o.CTime(), ShouldNotEqual, 0)
+
+			_, err = t.UseNameWhenTagEmpty().Select(&o, Fields("ctime"), Where("`id` >= ?", 1))
+			So(err, ShouldBeNil)
+			So(o.CTime(), ShouldNotEqual, 0)
 		})
 
-		Convey("Select - other type with Fields", t, func() {
+		Convey("Select - other type with Fields", func() {
 			t := Table(db, "test", context.TODO())
 
 			var cnt int64
@@ -1215,7 +1233,7 @@ func TestMisc(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 
-		Convey("Select - empty single result", t, func() {
+		Convey("Select - empty single result", func() {
 			t := Table(db, "test", context.TODO())
 
 			var o x
@@ -1224,7 +1242,7 @@ func TestMisc(t *testing.T) {
 			So(n, ShouldEqual, 0)
 		})
 
-		Convey("Select - sql error", t, func() {
+		Convey("Select - sql error", func() {
 			t := Table(db, "test", context.TODO())
 
 			var o x
@@ -1238,7 +1256,7 @@ func TestMisc(t *testing.T) {
 			So(n, ShouldEqual, 0)
 		})
 
-		Convey("Select - scan error", t, func() {
+		Convey("Select - scan error", func() {
 			t := Table(db, "test", context.TODO())
 
 			var o struct {
@@ -1252,16 +1270,101 @@ func TestMisc(t *testing.T) {
 		})
 	})
 	
-	Convey("Insert - arg type err", func() {
-		t := Table(db, "test", context.TODO())
+	Convey("Insert", t, func() {
+		Convey("Insert - arg type err", func() {
+			t := Table(db, "test", context.TODO())
 
-		var o x
-		_, err := t.Insert(o, Where("`id` >= ?", 1))
-		So(err, ShouldNotBeNil)
+			var o x
+			_, err := t.Insert(o, Where("`id` >= ?", 1))
+			So(err, ShouldNotBeNil)
 
-		var i int64
-		_, err = t.Insert(&i, Where("`id` >= ?", 1))
-		So(err, ShouldNotBeNil)
+			var i int64
+			_, err = t.Insert(&i, Where("`id` >= ?", 1))
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("Insert - sql error", func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x
+			n, err := t.Insert(&o, Where("xxxx"))
+			So(err, ShouldNotBeNil)
+			So(n, ShouldEqual, 0)
+		})
+
+		Convey("Insert - UseNameWhenTagEmpty", func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x1
+			n, err := t.UseNameWhenTagEmpty().Insert(&o)
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+
+			n, err = t.UseNameWhenTagEmpty().Insert(&o, Fields("ctime"))
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+		})
+	})
+	
+	Convey("Update", t, func() {
+		Convey("Update - arg len err", func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x
+			_, err := t.Update(&o)
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("Update - arg type err", func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x
+			_, err := t.Update(o, Where("`id` >= ?", 1))
+			So(err, ShouldNotBeNil)
+
+			var i int64
+			_, err = t.Update(&i, Where("`id` >= ?", 1))
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("Update - sql error", func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x
+			n, err := t.Update(&o, Where("xxxx"))
+			So(err, ShouldNotBeNil)
+			So(n, ShouldEqual, 0)
+		})
+
+		Convey("Update - UseNameWhenTagEmpty", func() {
+			t := Table(db, "test", context.TODO())
+
+			var o x1
+			n, err := t.UseNameWhenTagEmpty().Update(&o)
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+
+			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("ctime"))
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+		})
+	})
+	
+	Convey("Delete", t, func() {
+		Convey("Delete - arg len err", func() {
+			t := Table(db, "test", context.TODO())
+
+			_, err := t.Delete()
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("Delete - sql error", func() {
+			t := Table(db, "test", context.TODO())
+
+			n, err := t.Delete(Where("xxxx"))
+			So(err, ShouldNotBeNil)
+			So(n, ShouldEqual, 0)
+		})
 	})
 
 	Convey("toUnix - leap year", t, func() {
