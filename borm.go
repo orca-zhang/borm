@@ -130,6 +130,22 @@ func GroupBy(fields ...string) *groupByItem {
 	return &groupByItem{Fields: fields}
 }
 
+// Having .
+func Having(conds ...interface{}) *havingItem {
+	if l := len(conds); l > 0 {
+		if s, ok := conds[0].(string); ok {
+			return &havingItem{Conds: []interface{}{
+				&ormCond{
+					Op:   s,
+					Args: conds[1:l],
+				},
+			}}
+		}
+		return &havingItem{Conds: conds}
+	}
+	panic("too few conditions")
+}
+
 // OrderBy .
 func OrderBy(orders ...string) *orderByItem {
 	return &orderByItem{Orders: orders}
