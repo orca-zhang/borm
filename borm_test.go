@@ -3,6 +3,9 @@ package borm
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"strconv"
+	"strings"
 	"testing"
 
 	"fmt"
@@ -83,7 +86,7 @@ func TestSelect(t *testing.T) {
 			tbl := Table(db, "test").Reuse()
 
 			for i := 0; i < 10; i++ {
-				n, err := tbl.Select(&o, Where("`id` >= ?", 1), GroupBy("id"), Having("id >= ?", 0), Limit(100))
+				n, err := tbl.Select(&o, Where(Cond("`id` >= ?", 1)), GroupBy("id"), Having(Between("id", 0, 1000)), Limit(100))
 
 				So(err, ShouldBeNil)
 				So(n, ShouldEqual, 1)
@@ -95,7 +98,7 @@ func TestSelect(t *testing.T) {
 			var o []x
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&o, Where(Gte("id", 0)), OrderBy("id", "name"), Limit(0, 100))
+			n, err := tbl.Select(&o, Where(Gte("id", 0), Lte("id", 1000)), OrderBy("id", "name"), Limit(0, 100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
@@ -120,7 +123,7 @@ func TestSelect(t *testing.T) {
 			var o c
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&o, GroupBy("id", `name`), Having(Gt("id", 0)), Limit(100))
+			n, err := tbl.Select(&o, GroupBy("id", `name`), Having(Gt("id", 0), Neq("name", "")), Limit(100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -143,7 +146,7 @@ func TestSelect(t *testing.T) {
 			var cnt int64
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&cnt, Fields("count(1)"), Where("`id` >= ?", 1), Limit(100))
+			n, err := tbl.Select(&cnt, Fields("count(1)"), Where(Eq("id", 1)), Limit(100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -961,6 +964,136 @@ func TestScanner(t *testing.T) {
 			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
 		})
 
+		Convey("string (DATE) to int8", func() {
+			/* int8 */
+			var i int8
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to int16", func() {
+			/* int16 */
+			var i int16
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to int32", func() {
+			/* int32 */
+			var i int32
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to uint", func() {
+			/* uint */
+			var i uint
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to uint8", func() {
+			/* uint8 */
+			var i uint8
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to uint16", func() {
+			/* uint16 */
+			var i uint16
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to uint32", func() {
+			/* uint32 */
+			var i uint32
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to uint64", func() {
+			/* uint64 */
+			var i uint64
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to float32", func() {
+			/* float32 */
+			var f float32
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(f),
+				Val:  unsafe.Pointer(&f),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(f, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
+		Convey("string (DATE) to float64", func() {
+			/* float64 */
+			var f float64
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(f),
+				Val:  unsafe.Pointer(&f),
+			}
+
+			err := stringScanner.Scan(string("2019-03-01"))
+			So(err, ShouldBeNil)
+			So(f, ShouldEqual, time.Date(2019, 3, 1, 0, 0, 0, 0, time.UTC).Unix())
+		})
+
 		Convey("string (DATETIME) to int", func() {
 			/* int */
 			var i int
@@ -1161,6 +1294,26 @@ func TestMisc(t *testing.T) {
 				Where()
 			}), ShouldNotBeNil)
 		})
+		Convey("Where In empty slice", func() {
+			w := Where(In("id"))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+			
+			So(sb.String(), ShouldEqual, " where 1=1")
+			So(len(stmtArgs), ShouldEqual, 0)
+		})
+		Convey("Where In 1 slice", func() {
+			w := Where(In("id"), []interface{}{1})
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+			
+			So(sb.String(), ShouldEqual, " where `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
 	})
 
 	Convey("Having", t, func() {
@@ -1359,7 +1512,7 @@ func TestMisc(t *testing.T) {
 			So(n, ShouldEqual, 1)
 
 			o.X += "1"
-			n, err = t.UseNameWhenTagEmpty().Debug().Update(&o, Fields("name"), Where("id>=0"), Limit(1))
+			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("name"), Where("id>=0"), Limit(1))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 		})
@@ -1423,6 +1576,37 @@ func TestMisc(t *testing.T) {
 			So(PanicCheck(func () {
 				checkInTestFile("aaa.go")
 			}), ShouldNotBeNil)
+		})
+	})
+
+	Convey("numberToString", t, func() {
+		Convey("default", func() {
+			var i int8
+			t := reflect2.TypeOf(i)
+			So(numberToString(t.Kind(), i), ShouldEqual, "")
+		})
+	})
+
+	Convey("strconvErr", t, func() {
+		Convey("strconv.NumError", func() {
+			err := &strconv.NumError{
+				Func:"fn",
+				Num: "str", 
+				Err: strconv.ErrSyntax,
+			}
+			So(strconvErr(err), ShouldEqual, err)
+		})
+		Convey("normal err", func() {
+			err := errors.New("xxx")
+			So(strconvErr(err), ShouldEqual, err)
+		})
+	})
+
+	Convey("numberToString", t, func() {
+		Convey("default", func() {
+			var i int8
+			t := reflect2.TypeOf(i)
+			So(numberToString(t.Kind(), i), ShouldEqual, "")
 		})
 	})
 }

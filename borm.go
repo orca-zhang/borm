@@ -1218,8 +1218,12 @@ func Like(field string, pattern string) *ormCond {
 
 // In .
 func In(field string, args ...interface{}) *ormCond {
-	if len(args) <= 0 {
-		return &ormCond{}
+	switch len(args) {
+	case 0:
+		return &ormCond{Op: "1=1"}
+		// 单条不用in，用等于
+	case 1:
+		return Eq(field, args[0])
 	}
 
 	var sb strings.Builder
