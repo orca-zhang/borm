@@ -193,7 +193,7 @@ func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 				isPtrArray = true
 			}
 		}
-	case reflect.Map:
+	// case reflect.Map:
 		// TODO
 	default:
 		return 0, errors.New("argument 2 should be map or ptr")
@@ -219,7 +219,7 @@ func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 				args = args[1:]
 			}
 			// map类型
-		} else if rt.Kind() == reflect.Map {
+		// } else if rt.Kind() == reflect.Map {
 			// TODO
 			// 其他类型
 		} else {
@@ -284,7 +284,7 @@ func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 				}
 			}
 			// map类型
-		} else if rt.Kind() == reflect.Map {
+		// } else if rt.Kind() == reflect.Map {
 			// TODO
 			// 其他类型
 		} else {
@@ -414,7 +414,7 @@ func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
 				isPtrArray = true
 			}
 		}
-	case reflect.Map:
+	// case reflect.Map:
 		// TODO
 	default:
 		return 0, errors.New("argument 2 should be map or ptr")
@@ -567,7 +567,7 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 		switch rt.Kind() {
 		case reflect.Ptr:
 			rt = rt.(reflect2.PtrType).Elem()
-		case reflect.Map:
+		// case reflect.Map:
 			// TODO
 		default:
 			return 0, errors.New("argument 2 should be map or ptr")
