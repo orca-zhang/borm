@@ -1358,7 +1358,7 @@ func TestMisc(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
 
-			o.X += "1"
+			o.ctime += 1
 			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("ctime"), Where("id=0"))
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
