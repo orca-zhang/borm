@@ -1295,7 +1295,9 @@ func TestMisc(t *testing.T) {
 		Convey("Insert - UseNameWhenTagEmpty", func() {
 			t := Table(db, "test", context.TODO())
 
-			var o x1
+			o := x1{
+				X: "xxx",
+			}
 			n, err := t.UseNameWhenTagEmpty().Insert(&o)
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -1339,11 +1341,17 @@ func TestMisc(t *testing.T) {
 		Convey("Update - UseNameWhenTagEmpty", func() {
 			t := Table(db, "test", context.TODO())
 
-			var o x1
+			o := x1{
+				X: "xxx2",
+			}
 			n, err := t.UseNameWhenTagEmpty().Update(&o, Where("id=0"))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 
+			o = x1{
+				X:     "xxx2",
+				ctime: 1,
+			}
 			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("ctime"), Where("id=0"))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
