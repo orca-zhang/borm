@@ -1298,7 +1298,11 @@ func TestMisc(t *testing.T) {
 			o := x1{
 				X: "xxx",
 			}
-			n, err := t.UseNameWhenTagEmpty().Insert(&o)
+			n, err := t.Insert(&o)
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThan, 0)
+
+			n, err = t.UseNameWhenTagEmpty().Insert(&o)
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
 
@@ -1342,16 +1346,19 @@ func TestMisc(t *testing.T) {
 			t := Table(db, "test", context.TODO())
 
 			o := x1{
-				X: "xxx2",
-			}
-			n, err := t.UseNameWhenTagEmpty().Update(&o, Where("id=0"))
-			So(err, ShouldBeNil)
-			So(n, ShouldBeGreaterThan, 0)
-
-			o = x1{
 				X:     "xxx2",
 				ctime: 1,
 			}
+			n, err := t.Update(&o, Where("id=0"))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThan, 0)
+
+			o.X += "1"
+			n, err = t.UseNameWhenTagEmpty().Update(&o, Where("id=0"))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThan, 0)
+
+			o.X += "1"
 			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("ctime"), Where("id=0"))
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
