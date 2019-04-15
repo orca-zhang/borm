@@ -279,7 +279,7 @@ func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 
 			fi := args[0].(*fieldsItem)
 			if len(fi.Fields) < 1 {
-				return 0, errors.New("Too few fields")
+				return 0, errors.New("too few fields")
 			}
 
 			item.Cols = append(item.Cols, &scanner{
@@ -407,7 +407,7 @@ func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
 	// Fields or None
 	// struct类型
 	if rtElem.Kind() != reflect.Struct {
-		return 0, errors.New("Non-structure type not supported yet")
+		return 0, errors.New("non-structure type not supported yet")
 	}
 
 	s := rtElem.(reflect2.StructType)
@@ -562,7 +562,7 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 		// Fields or None
 		// struct类型
 		if rt.Kind() != reflect.Struct {
-			return 0, errors.New("Non-structure type not supported yet")
+			return 0, errors.New("non-structure type not supported yet")
 		}
 
 		// Fields or KeyVals or None
@@ -635,7 +635,11 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 	return int(row), nil
 }
 
-func (t *table) Delete(arg ormItem) (int, error) {
+func (t *table) Delete(args ...ormItem) (int, error) {
+	if len(args) <= 0 {
+		return 0, errors.New("argument 1 cannot be omitted")
+	}
+
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Delete", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -648,8 +652,11 @@ func (t *table) Delete(arg ormItem) (int, error) {
 	fieldEscape(&sb, t.Name)
 
 	var stmtArgs []interface{}
-	arg.BuildSQL(&sb)
-	arg.BuildArgs(&stmtArgs)
+
+	for _, arg := range args {
+		arg.BuildSQL(&sb)
+		arg.BuildArgs(&stmtArgs)
+	}
 
 	if t.Cfg.Debug {
 		log.Println(sb.String(), stmtArgs)
