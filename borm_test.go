@@ -1354,27 +1354,22 @@ func PanicCheck(f func ()) (err interface{}) {
 }
 
 func ReuseTest() {
-	Convey("user-defined fields", func() {
-		var o x
-		tbl := Table(db, "test").Reuse()
+	var o x
+	tbl := Table(db, "test").Reuse()
 
-		n, err := tbl.Select(&o, Fields("name", "ctime", "age"), Where("`id` >= ?", 1), Limit(100))
+	n, err := tbl.Select(&o, Fields("name", "ctime", "age"), Where("`id` >= ?", 1), Limit(100))
 
-		So(err, ShouldBeNil)
-		So(n, ShouldEqual, 1)
-		fmt.Printf("%+v\n", o)
-	})
+	So(err, ShouldBeNil)
+	So(n, ShouldEqual, 1)
+	fmt.Printf("%+v\n", o)
 
-	Convey("user-defined fields with simple type", func() {
-		var cnt int64
-		tbl := Table(db, "test").Reuse()
+	var cnt int64
 
-		n, err := tbl.Select(&cnt, Fields("count(1)"), Where(Eq("id", 1)), Limit(100))
+	n, err = tbl.Select(&cnt, Fields("count(1)"), Where(Eq("id", 1)), Limit(100))
 
-		So(err, ShouldBeNil)
-		So(n, ShouldEqual, 1)
-		fmt.Printf("%+v\n", cnt)
-	})
+	So(err, ShouldBeNil)
+	So(n, ShouldEqual, 1)
+	fmt.Printf("%+v\n", cnt)
 }
 
 func TestMisc(t *testing.T) {
