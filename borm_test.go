@@ -86,7 +86,7 @@ func TestSelect(t *testing.T) {
 			tbl := Table(db, "test").Reuse()
 
 			for i := 0; i < 10; i++ {
-				n, err := tbl.Select(&o, Where(Cond("`id` >= ?", 1)), GroupBy("id"), Having(Between("id", 0, 1000)), Limit(100))
+				n, err := tbl.Select(&o, Where(Cond("`id` >= ?", 1)), GroupBy("id"), Having("id>=", 0), Limit(100))
 
 				So(err, ShouldBeNil)
 				So(n, ShouldEqual, 1)
@@ -98,7 +98,7 @@ func TestSelect(t *testing.T) {
 			var o []x
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&o, Where(Gte("id", 0), Lte("id", 1000)), OrderBy("id", "name"), Limit(0, 100))
+			n, err := tbl.Select(&o, Where(Gte("id", 0), Lte("id", 1000), Between("id", 0, 1000)), OrderBy("id", "name"), Limit(0, 100))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
@@ -857,6 +857,42 @@ func TestScanner(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(f, ShouldEqual, 123.33)
 		})
+
+		Convey("bad string to int64", func() {
+			/* int64 */
+			i := int64(0)
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("123abc"))
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("bad string to uint64", func() {
+			/* uint64 */
+			i := uint64(0)
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(string("123abc"))
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("bad string to float64", func() {
+			/* float64 */
+			f := float64(0)
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(f),
+				Val:  unsafe.Pointer(&f),
+			}
+
+			err := stringScanner.Scan(string("123.33abc"))
+			So(err, ShouldNotBeNil)
+		})
 	})
 
 	Convey("time.Time", t, func() {
@@ -1106,6 +1142,44 @@ func TestScanner(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(i, ShouldEqual, time.Date(2019, 3, 1, 13, 5, 59, 0, time.UTC).Unix())
 		})
+
+		Convey("bad ts string to time.Time", func() {
+			/* time */
+			var t time.Time
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(t),
+				Val:  unsafe.Pointer(&t),
+			}
+
+			err := stringScanner.Scan("1551405784abc")
+			So(err, ShouldNotBeNil)
+		})
+
+		Convey("ts string to time.Time", func() {
+			/* time */
+			var t time.Time
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(t),
+				Val:  unsafe.Pointer(&t),
+			}
+
+			err := stringScanner.Scan("1551405784")
+			So(err, ShouldBeNil)
+			So(t.Unix(), ShouldEqual, time.Date(2019, 3, 1, 2, 3, 4, 0, time.UTC).Unix())
+		})
+	})
+
+	Convey("unknown type", t, func() {
+		Convey("int64 to x", func() {
+			var o x
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(o),
+				Val:  unsafe.Pointer(&o),
+			}
+
+			err := stringScanner.Scan(int64(1551405784))
+			So(err, ShouldNotBeNil)
+		})
 	})
 }
 
@@ -1279,6 +1353,30 @@ func PanicCheck(f func ()) (err interface{}) {
 	return
 }
 
+func ReuseTest() {
+	Convey("user-defined fields", func() {
+		var o x
+		tbl := Table(db, "test").Reuse()
+
+		n, err := tbl.Select(&o, Fields("name", "ctime", "age"), Where("`id` >= ?", 1), Limit(100))
+
+		So(err, ShouldBeNil)
+		So(n, ShouldEqual, 1)
+		fmt.Printf("%+v\n", o)
+	})
+
+	Convey("user-defined fields with simple type", func() {
+		var cnt int64
+		tbl := Table(db, "test").Reuse()
+
+		n, err := tbl.Select(&cnt, Fields("count(1)"), Where(Eq("id", 1)), Limit(100))
+
+		So(err, ShouldBeNil)
+		So(n, ShouldEqual, 1)
+		fmt.Printf("%+v\n", cnt)
+	})
+}
+
 func TestMisc(t *testing.T) {
 	Convey("Table", t, func() {
 		Convey("Table with context", func() {
@@ -1355,7 +1453,8 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Select - Reuse", func() {
-			// TODO
+			ReuseTest()
+			ReuseTest()
 		})
 
 		Convey("Select - UseNameWhenTagEmpty", func() {
