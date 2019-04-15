@@ -86,7 +86,7 @@ func TestSelect(t *testing.T) {
 			tbl := Table(db, "test").Reuse()
 
 			for i := 0; i < 10; i++ {
-				n, err := tbl.Select(&o, Where(Cond("`id` >= ?", 1)), GroupBy("id"), Having("id>=", 0), Limit(100))
+				n, err := tbl.Select(&o, Where(Cond("`id` >= ?", 1)), GroupBy("id"), Having("id>=?", 0), Limit(100))
 
 				So(err, ShouldBeNil)
 				So(n, ShouldEqual, 1)
