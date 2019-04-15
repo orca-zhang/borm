@@ -115,7 +115,7 @@
 
 1. 引入包
    ``` golang
-   import . "go-common/app/common/live/library/borm"
+   import . "github.com/orca-zhang/borm"
    ```
 
 2. 定义Table对象
@@ -143,9 +143,7 @@
 
 4. 执行操作
 
-   ``` golang
-   置顶说明：CRUD接口返回值为 `(影响的条数，错误)`
-   ```
+**置顶说明：CRUD接口返回值为 (影响的条数，错误)**
 
 - 插入
    ``` golang
@@ -196,7 +194,7 @@
    n, err = t.Delete(Where("name = ?", name))
 
    // 根据条件删除部分条数
-   n, err = t.Delete(Where(Eq("id", id))，Limit(1))
+   n, err = t.Delete(Where(Eq("id", id)), Limit(1))
    ```
 
 # 其他细节
