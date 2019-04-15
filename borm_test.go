@@ -1305,7 +1305,7 @@ func TestMisc(t *testing.T) {
 			So(len(stmtArgs), ShouldEqual, 0)
 		})
 		Convey("Where In 1 slice", func() {
-			w := Where(In("id"), []interface{}{1})
+			w := Where(In("id", []interface{}{1}))
 			var sb strings.Builder
 			var stmtArgs []interface{}
 			w.BuildSQL(&sb)
