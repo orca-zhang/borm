@@ -1340,11 +1340,11 @@ func TestMisc(t *testing.T) {
 			t := Table(db, "test", context.TODO())
 
 			var o x1
-			n, err := t.UseNameWhenTagEmpty().Update(&o)
+			n, err := t.UseNameWhenTagEmpty().Update(&o, Where("id=0"))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 
-			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("ctime"))
+			n, err = t.UseNameWhenTagEmpty().Update(&o, Where("id=0"), Fields("ctime"))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 		})
