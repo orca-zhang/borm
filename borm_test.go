@@ -109,7 +109,7 @@ func TestSelect(t *testing.T) {
 			var o []*x
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&o, Where(In("id", []interface{}{1, 2, 3, 4}...)))
+			n, err := tbl.Select(&o, Where(In("id", []interface{}{1, 2, 3, 4}...), Like("name", "Or%")))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
@@ -1506,17 +1506,17 @@ func TestMisc(t *testing.T) {
 		Convey("Select - scan error", func() {
 			t := Table(db, "test", context.TODO())
 
-			var o struct {
+			var o []struct {
 				Name struct {
 					I int64
 				} `borm:"name"`
 			}
-			n, err := t.Select(&o, Where(Lt("id", 100), Like("name", "Or%")), Limit(1))
+			n, err := t.Debug().Select(&o, Where(Lt("id", 100)), Limit(1))
 			So(err, ShouldNotBeNil)
 			So(n, ShouldEqual, 0)
 		})
 	})
-	
+
 	Convey("Insert", t, func() {
 		Convey("Insert - arg type err", func() {
 			t := Table(db, "test", context.TODO())
