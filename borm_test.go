@@ -1349,19 +1349,19 @@ func TestMisc(t *testing.T) {
 				X:     "xxx2",
 				ctime: 1,
 			}
-			n, err := t.Update(&o, Where("id=0"))
+			n, err := t.Update(&o, Where("id>=0"), Limit(1))
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
 
 			o.X += "1"
-			n, err = t.UseNameWhenTagEmpty().Update(&o, Where("id=0"))
+			n, err = t.UseNameWhenTagEmpty().Update(&o, Where("id>=0"), Limit(1))
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
 
 			o.ctime += 1
-			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("ctime"), Where("id=0"))
+			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("ctime"), Where("id>=0"), Limit(1))
 			So(err, ShouldBeNil)
-			So(n, ShouldBeGreaterThan, 0)
+			So(n, ShouldEqual, 1)
 		})
 	})
 	
