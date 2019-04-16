@@ -63,7 +63,7 @@
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
-      <td>borm会SQL就会用</td>
+      <td>会SQL就会用borm</td>
    </tr>
    <tr>
       <td>可复用原生连接</td>
