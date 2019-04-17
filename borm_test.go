@@ -1992,6 +1992,17 @@ func TestMisc(t *testing.T) {
 		So(odku.Type(), ShouldEqual, _onDuplicateKeyUpdate)
 	})
 
+	Convey("OnDuplicateKeyUpdate - Empty", t, func() {
+		w := OnDuplicateKeyUpdate(map[string]interface{}{})
+		var sb strings.Builder
+		var stmtArgs []interface{}
+		w.BuildSQL(&sb)
+		w.BuildArgs(&stmtArgs)
+
+		So(sb.String(), ShouldEqual, "")
+		So(len(stmtArgs), ShouldEqual, 0)
+	})
+
 	Convey("havingItem - Type", t, func() {
 		var having havingItem
 		So(having.Type(), ShouldEqual, _having)
@@ -2005,6 +2016,11 @@ func TestMisc(t *testing.T) {
 	Convey("limitItem - Type", t, func() {
 		var limit limitItem
 		So(limit.Type(), ShouldEqual, _limit)
+	})
+
+	Convey("ormCondEx - Type", t, func() {
+		condEx := &ormCondEx{Ty: _andCondEx}
+		So(condEx.Type(), ShouldEqual, _andCondEx)
 	})
 
 	Convey("checkInTestFile", t, func() {
