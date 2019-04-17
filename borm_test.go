@@ -1397,6 +1397,16 @@ func TestMisc(t *testing.T) {
 			So(sb.String(), ShouldEqual, " where 1=1")
 			So(len(stmtArgs), ShouldEqual, 0)
 		})
+		Convey("Where In empty slice slice", func() {
+			w := Where(In("id"), []interface{}{})
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+			
+			So(sb.String(), ShouldEqual, " where 1=1")
+			So(len(stmtArgs), ShouldEqual, 0)
+		})
 		Convey("Where In 1 slice", func() {
 			w := Where(In("id", []interface{}{1}))
 			var sb strings.Builder
@@ -1566,7 +1576,7 @@ func TestMisc(t *testing.T) {
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
 
-			So(sb.String(), ShouldEqual, " where `id`=? or `id`=? and `id`=?")
+			So(sb.String(), ShouldEqual, " where `id`=? or (`id`=? and `id`=?)")
 			So(len(stmtArgs), ShouldEqual, 3)
 		})
 	})
@@ -1726,7 +1736,7 @@ func TestMisc(t *testing.T) {
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
 
-			So(sb.String(), ShouldEqual, " having `id`=? or `id`=? and `id`=?")
+			So(sb.String(), ShouldEqual, " having `id`=? or (`id`=? and `id`=?)")
 			So(len(stmtArgs), ShouldEqual, 3)
 		})
 	})
