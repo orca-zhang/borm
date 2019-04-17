@@ -1749,7 +1749,7 @@ func TestMisc(t *testing.T) {
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
 
-			So(sb.String(), ShouldEqual, "`id1`=? or `id2`=? and `id3`=? and (`id4`=? or `id5`=?) or (`id6`=? or `id7`=?)")
+			So(sb.String(), ShouldEqual, "`id1`=? or (`id2`=? and `id3`=? and (`id4`=? or `id5`=?)) or (`id6`=? or `id7`=?)")
 			So(len(stmtArgs), ShouldEqual, 7)
 		})
 	})
