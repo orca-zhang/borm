@@ -222,9 +222,9 @@
 
 |序号|示例|说明|
 |-|-|-|
-|1|Where("id=? and name=?", id, name)|常规格式化版本|
-|2|Where(Eq("id", id), Eq("name", name)...)|默认为and连接|
-|3|Where(Eq("id", id), Or(Eq("name", name))...)|暂未支持|
+|1|Where("id=? and x=?", id, x)|常规格式化版本|
+|2|Where(Eq("id", id), Eq("x", x)...)|默认为and连接|
+|3|Where(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
 
 ### 预置Where条件
 
@@ -253,7 +253,7 @@
 |-|-|-|
 |1|Having("id=? and name=?", id, name)|常规格式化版本|
 |2|Having(Eq("id", id), Eq("name", name)...)|默认为and连接|
-|3|Having(Eq("id", id), Or(Eq("name", name))...)|暂未支持|
+|3|Having(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
 
 ### OrderBy
 
@@ -272,7 +272,7 @@
 
 |序号|示例|说明|
 |-|-|-|
-|1|OnDuplicateKeyUpdate(map[string]interface{}{"name": "new"})||
+|1|OnDuplicateKeyUpdate(map[string]interface{}{"name": "new"})|解决主键冲突的更新|
 
 # 如何mock
 
@@ -325,7 +325,5 @@
 - Select存储到map
 - Insert从map读
 - Insert/Update支持非指针类型
-- 自动处理where条件优先级（Or的处理）
 - Benchmark报告
 - 事务相关支持
-- 支持链式调用（解决dot import lint）
