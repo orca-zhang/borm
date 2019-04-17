@@ -1461,7 +1461,7 @@ func TestMisc(t *testing.T) {
 			So(sb.String(), ShouldEqual, "")
 			So(len(stmtArgs), ShouldEqual, 0)
 		})
-		Convey("Where - 2rd normal 1 arg Or", func() {
+		Convey("Where - 1st normal 1 arg Or", func() {
 			// normal Or
 			w := Where(Or(Eq("id", 0)))
 			var sb strings.Builder
@@ -1621,7 +1621,7 @@ func TestMisc(t *testing.T) {
 			So(sb.String(), ShouldEqual, "")
 			So(len(stmtArgs), ShouldEqual, 0)
 		})
-		Convey("Having - 2rd normal 1 arg Or", func() {
+		Convey("Having - 1st normal 1 arg Or", func() {
 			// normal Or
 			w := Having(Or(Eq("id", 0)))
 			var sb strings.Builder
