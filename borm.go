@@ -123,7 +123,16 @@ func Where(conds ...interface{}) *whereItem {
 				},
 			}}
 		}
-		return &whereItem{Conds: conds}
+		w := &whereItem{}
+		for _, c := range conds {
+			if condEx, ok := c.(*ormCondEx); ok {
+				if len(condEx.Conds) <= 0 {
+					continue
+				}
+			}
+			w.Conds = append(w.Conds, c)
+		}
+		return w
 	}
 	panic("too few conditions")
 }
@@ -144,7 +153,16 @@ func Having(conds ...interface{}) *havingItem {
 				},
 			}}
 		}
-		return &havingItem{Conds: conds}
+		h := &havingItem{}
+		for _, c := range conds {
+			if condEx, ok := c.(*ormCondEx); ok {
+				if len(condEx.Conds) <= 0 {
+					continue
+				}
+			}
+			h.Conds = append(h.Conds, c)
+		}
+		return h
 	}
 	panic("too few conditions")
 }
@@ -1298,9 +1316,13 @@ func In(field string, args ...interface{}) *ormCond {
 	switch len(args) {
 	case 0:
 		return &ormCond{Op: "1=1"}
-		// 单条不用in，用等于
 	case 1:
-		return Eq(field, args[0])
+		// 单条不用in，用等于
+		if arg, ok := args[0].([]interface{}); ok {
+			args = arg
+		} else {
+			return Eq(field, args[0])
+		}
 	}
 
 	var sb strings.Builder
