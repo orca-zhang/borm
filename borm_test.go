@@ -1559,7 +1559,7 @@ func TestMisc(t *testing.T) {
 			So(sb.String(), ShouldEqual, " where `id`=? and (`id`=? or `id`=?)")
 			So(len(stmtArgs), ShouldEqual, 3)
 		})
-		Convey("Where - And with Or", func() {
+		Convey("Where - Or with And", func() {
 			w := Where(Or(Eq("id", 0), And(Eq("id", 0), Eq("id", 0))))
 			var sb strings.Builder
 			var stmtArgs []interface{}
@@ -1719,7 +1719,7 @@ func TestMisc(t *testing.T) {
 			So(sb.String(), ShouldEqual, " having `id`=? and (`id`=? or `id`=?)")
 			So(len(stmtArgs), ShouldEqual, 3)
 		})
-		Convey("Having - And with Or", func() {
+		Convey("Having - Or with And", func() {
 			w := Having(Or(Eq("id", 0), And(Eq("id", 0), Eq("id", 0))))
 			var sb strings.Builder
 			var stmtArgs []interface{}
