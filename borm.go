@@ -1213,11 +1213,11 @@ func (cx *ormCondEx) BuildSQL(sb *strings.Builder) {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
 		} else if condEx, ok := c.(*ormCondEx); ok {
-			if condEx.Ty > cx.Ty && len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
+			if len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
 				sb.WriteString("(")
 			}
 			condEx.BuildSQL(sb)
-			if condEx.Ty > cx.Ty && len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
+			if len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
 				sb.WriteString(")")
 			}
 		}
