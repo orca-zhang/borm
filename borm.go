@@ -1313,6 +1313,7 @@ func Like(field string, pattern string) *ormCond {
 
 // In .
 func In(field string, args ...interface{}) *ormCond {
+RETRY:
 	switch len(args) {
 	case 0:
 		return &ormCond{Op: "1=1"}
@@ -1320,6 +1321,7 @@ func In(field string, args ...interface{}) *ormCond {
 		// 单条不用in，用等于
 		if arg, ok := args[0].([]interface{}); ok {
 			args = arg
+			goto RETRY
 		} else {
 			return Eq(field, args[0])
 		}
