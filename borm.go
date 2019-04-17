@@ -782,7 +782,10 @@ func (w *onDuplicateKeyUpdateItem) Type() int {
 }
 
 func (w *onDuplicateKeyUpdateItem) BuildSQL(sb *strings.Builder) {
-	sb.WriteString(" on duplicate key update ")
+	if len(w.KVs) <= 0 {
+		return
+	}
+	sb.WriteString(" on duplicate key update ")	
 	i := 0
 	for k := range w.KVs {
 		if i > 0 {
@@ -809,9 +812,10 @@ func (w *whereItem) Type() int {
 }
 
 func (w *whereItem) BuildSQL(sb *strings.Builder) {
-	if len(w.Conds) > 1 {
-		sb.WriteString(" where ")
+	if len(w.Conds) <= 0 {
+		return
 	}
+	sb.WriteString(" where ")
 	for i, c := range w.Conds {
 		if i > 0 {
 			sb.WriteString(" and ")
@@ -872,6 +876,9 @@ func (h *havingItem) Type() int {
 }
 
 func (h *havingItem) BuildSQL(sb *strings.Builder) {
+	if len(h.Conds) <= 0 {
+		return
+	}
 	sb.WriteString(" having ")
 	for i, c := range h.Conds {
 		if i > 0 {
