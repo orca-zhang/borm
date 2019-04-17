@@ -1535,7 +1535,7 @@ func TestMisc(t *testing.T) {
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
 
-			So(sb.String(), ShouldEqual, " where `id`=? or `id`=?")
+			So(sb.String(), ShouldEqual, " where `id`=? and `id`=?")
 			So(len(stmtArgs), ShouldEqual, 2)
 		})
 		Convey("Where - 2rd normal more arg Or", func() {
@@ -1695,7 +1695,7 @@ func TestMisc(t *testing.T) {
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
 
-			So(sb.String(), ShouldEqual, " having `id`=? or `id`=?")
+			So(sb.String(), ShouldEqual, " having `id`=? and `id`=?")
 			So(len(stmtArgs), ShouldEqual, 2)
 		})
 		Convey("Having - 2rd normal more arg Or", func() {
