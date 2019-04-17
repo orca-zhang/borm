@@ -35,6 +35,9 @@ const (
 	_orderBy
 	_limit
 	_onDuplicateKeyUpdate
+
+	_andCondEx = iota
+	_orCondEx
 )
 
 const (
@@ -806,7 +809,9 @@ func (w *whereItem) Type() int {
 }
 
 func (w *whereItem) BuildSQL(sb *strings.Builder) {
-	sb.WriteString(" where ")
+	if len(w.Conds) > 1 {
+		sb.WriteString(" where ")
+	}
 	for i, c := range w.Conds {
 		if i > 0 {
 			sb.WriteString(" and ")
@@ -814,6 +819,14 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 		if cond, ok := c.(*ormCond); ok {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
+		} else if condEx, ok := c.(*ormCondEx); ok {
+			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(w.Conds) > 1 {
+				sb.WriteString("(")
+			}
+			condEx.BuildSQL(sb)
+			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(w.Conds) > 1 {
+				sb.WriteString(")")
+			}
 		}
 	}
 }
@@ -822,6 +835,8 @@ func (w *whereItem) BuildArgs(stmtArgs *[]interface{}) {
 	for _, c := range w.Conds {
 		if cond, ok := c.(*ormCond); ok {
 			*stmtArgs = append(*stmtArgs, cond.Args...)
+		} else if condEx, ok := c.(*ormCondEx); ok {
+			condEx.BuildArgs(stmtArgs)
 		}
 	}
 }
@@ -865,6 +880,14 @@ func (h *havingItem) BuildSQL(sb *strings.Builder) {
 		if cond, ok := c.(*ormCond); ok {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
+		} else if condEx, ok := c.(*ormCondEx); ok {
+			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(h.Conds) > 1 {
+				sb.WriteString("(")
+			}
+			condEx.BuildSQL(sb)
+			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(h.Conds) > 1 {
+				sb.WriteString(")")
+			}
 		}
 	}
 }
@@ -873,6 +896,8 @@ func (h *havingItem) BuildArgs(stmtArgs *[]interface{}) {
 	for _, c := range h.Conds {
 		if cond, ok := c.(*ormCond); ok {
 			*stmtArgs = append(*stmtArgs, cond.Args...)
+		} else if condEx, ok := c.(*ormCondEx); ok {
+			condEx.BuildArgs(stmtArgs)
 		}
 	}
 }
@@ -1158,9 +1183,63 @@ type ormCond struct {
 	Args  []interface{}
 }
 
+type ormCondEx struct {
+	Ty    int
+	Conds []interface{}
+}
+
+func (cx *ormCondEx) Type() int {
+	return cx.Ty
+}
+
+func (cx *ormCondEx) BuildSQL(sb *strings.Builder) {
+	for i, c := range cx.Conds {
+		if i > 0 {
+			switch cx.Ty {
+			case _andCondEx:
+				sb.WriteString(" and ")
+			case _orCondEx:
+				sb.WriteString(" or ")
+			}
+		}
+		if cond, ok := c.(*ormCond); ok {
+			fieldEscape(sb, cond.Field)
+			sb.WriteString(cond.Op)
+		} else if condEx, ok := c.(*ormCondEx); ok {
+			if cx.Ty > condEx.Ty && len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
+				sb.WriteString("(")
+			}
+			condEx.BuildSQL(sb)
+			if cx.Ty > condEx.Ty && len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
+				sb.WriteString(")")
+			}
+		}
+	}
+}
+
+func (cx *ormCondEx) BuildArgs(stmtArgs *[]interface{}) {
+	for _, c := range cx.Conds {
+		if cond, ok := c.(*ormCond); ok {
+			*stmtArgs = append(*stmtArgs, cond.Args...)
+		} else if condEx, ok := c.(*ormCondEx); ok {
+			condEx.BuildArgs(stmtArgs)
+		}
+	}
+}
+
 /*
    条件逻辑运算
 */
+
+// And .
+func And(conds ...interface{}) *ormCondEx {
+	return &ormCondEx{Ty: _andCondEx, Conds: conds}
+}
+
+// Or .
+func Or(conds ...interface{}) *ormCondEx {
+	return &ormCondEx{Ty: _orCondEx, Conds: conds}
+}
 
 // Cond .
 func Cond(c string, args ...interface{}) *ormCond {
