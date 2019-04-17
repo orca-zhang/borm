@@ -1733,15 +1733,15 @@ func TestMisc(t *testing.T) {
 
 	Convey("Embeded And and Or", t, func() {
 		Convey("Embeded And with Or", func() {
-			w := Or(Eq("id", 0), 
-					And(Eq("id", 0),
-						Eq("id", 0),
-						Or(Eq("id", 0),
-							Eq("id", 0),
+			w := Or(Eq("id1", 0), 
+					And(Eq("id2", 0),
+						Eq("id3", 0),
+						Or(Eq("id4", 0),
+							Eq("id5", 0),
 						),
 					),
-					Or(Eq("id", 0),
-						Eq("id", 0),
+					Or(Eq("id6", 0),
+						Eq("id7", 0),
 					),
 				)
 			var sb strings.Builder
@@ -1749,7 +1749,7 @@ func TestMisc(t *testing.T) {
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
 
-			So(sb.String(), ShouldEqual, "`id`=? or `id`=? and `id`=? and (`id`=? or `id`=?) or (`id`=? or `id`=?)")
+			So(sb.String(), ShouldEqual, "`id1`=? or `id2`=? and `id3`=? and (`id4`=? or `id5`=?) or (`id6`=? or `id7`=?)")
 			So(len(stmtArgs), ShouldEqual, 7)
 		})
 	})
