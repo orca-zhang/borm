@@ -1407,6 +1407,168 @@ func TestMisc(t *testing.T) {
 			So(sb.String(), ShouldEqual, " where `id`=?")
 			So(len(stmtArgs), ShouldEqual, 1)
 		})
+		Convey("Where In 2 slice", func() {
+			w := Where(In("id", []interface{}{1,2}))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+			
+			So(sb.String(), ShouldEqual, " where `id` in (?,?)")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Where - 1st empty And", func() {
+			// And empty
+			w := Where(And())
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, "")
+			So(len(stmtArgs), ShouldEqual, 0)
+		})
+		Convey("Where - 1st normal 1 arg And", func() {
+			// normal And
+			w := Where(And(Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
+		Convey("Where - 1st normal more arg And", func() {
+			// normal And
+			w := Where(And(Eq("id", 0), Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=? and `id`=?")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Where - 1st empty Or", func() {
+			// Or empty
+			w := Where(Or())
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, "")
+			So(len(stmtArgs), ShouldEqual, 0)
+		})
+		Convey("Where - 2rd normal 1 arg Or", func() {
+			// normal Or
+			w := Where(Or(Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
+		Convey("Where - 1st normal more arg Or", func() {
+			// normal Or
+			w := Where(Or(Eq("id", 0), Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=? or `id`=?")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Where - 2rd empty And", func() {
+			// And empty
+			w := Where(Eq("id", 0), And())
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
+		Convey("Where - 2rd normal 1 arg And", func() {
+			// normal And
+			w := Where(Eq("id", 0), And(Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=? and `id`=?")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Where - 2rd normal more arg And", func() {
+			// normal And
+			w := Where(Eq("id", 0), And(Eq("id", 0), Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=? and `id`=? and `id`=?")
+			So(len(stmtArgs), ShouldEqual, 3)
+		})
+		Convey("Where - 2rd empty Or", func() {
+			// Or empty
+			w := Where(Eq("id", 0), Or())
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
+		Convey("Where - 2rd normal 1 arg Or", func() {
+			// normal Or
+			w := Where(Eq("id", 0), Or(Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=? or `id`=?")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Where - 2rd normal more arg Or", func() {
+			// normal Or
+			w := Where(Eq("id", 0), Or(Eq("id", 0), Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=? and (`id`=? or `id`=?)")
+			So(len(stmtArgs), ShouldEqual, 3)
+		})
+		Convey("Where - And with Or", func() {
+			w := Where(And(Eq("id", 0), Or(Eq("id", 0), Eq("id", 0))))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=? and (`id`=? or `id`=?)")
+			So(len(stmtArgs), ShouldEqual, 3)
+		})
+		Convey("Where - And with Or", func() {
+			w := Where(Or(Eq("id", 0), And(Eq("id", 0), Eq("id", 0))))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " where `id`=? or `id`=? and `id`=?")
+			So(len(stmtArgs), ShouldEqual, 3)
+		})
 	})
 
 	Convey("Having", t, func() {
@@ -1414,6 +1576,181 @@ func TestMisc(t *testing.T) {
 			So(PanicCheck(func () {
 				Having()
 			}), ShouldNotBeNil)
+		})
+		Convey("Having - 1st empty And", func() {
+			// And empty
+			w := Having(And())
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, "")
+			So(len(stmtArgs), ShouldEqual, 0)
+		})
+		Convey("Having - 1st normal 1 arg And", func() {
+			// normal And
+			w := Having(And(Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
+		Convey("Having - 1st normal more arg And", func() {
+			// normal And
+			w := Having(And(Eq("id", 0), Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=? and `id`=?")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Having - 1st empty Or", func() {
+			// Or empty
+			w := Having(Or())
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, "")
+			So(len(stmtArgs), ShouldEqual, 0)
+		})
+		Convey("Having - 2rd normal 1 arg Or", func() {
+			// normal Or
+			w := Having(Or(Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
+		Convey("Having - 1st normal more arg Or", func() {
+			// normal Or
+			w := Having(Or(Eq("id", 0), Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=? or `id`=?")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Having - 2rd empty And", func() {
+			// And empty
+			w := Having(Eq("id", 0), And())
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
+		Convey("Having - 2rd normal 1 arg And", func() {
+			// normal And
+			w := Having(Eq("id", 0), And(Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=? and `id`=?")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Having - 2rd normal more arg And", func() {
+			// normal And
+			w := Having(Eq("id", 0), And(Eq("id", 0), Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=? and `id`=? and `id`=?")
+			So(len(stmtArgs), ShouldEqual, 3)
+		})
+		Convey("Having - 2rd empty Or", func() {
+			// Or empty
+			w := Having(Eq("id", 0), Or())
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=?")
+			So(len(stmtArgs), ShouldEqual, 1)
+		})
+		Convey("Having - 2rd normal 1 arg Or", func() {
+			// normal Or
+			w := Having(Eq("id", 0), Or(Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=? or `id`=?")
+			So(len(stmtArgs), ShouldEqual, 2)
+		})
+		Convey("Having - 2rd normal more arg Or", func() {
+			// normal Or
+			w := Having(Eq("id", 0), Or(Eq("id", 0), Eq("id", 0)))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=? and (`id`=? or `id`=?)")
+			So(len(stmtArgs), ShouldEqual, 3)
+		})
+		Convey("Having - And with Or", func() {
+			w := Having(And(Eq("id", 0), Or(Eq("id", 0), Eq("id", 0))))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=? and (`id`=? or `id`=?)")
+			So(len(stmtArgs), ShouldEqual, 3)
+		})
+		Convey("Having - And with Or", func() {
+			w := Having(Or(Eq("id", 0), And(Eq("id", 0), Eq("id", 0))))
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, " having `id`=? or `id`=? and `id`=?")
+			So(len(stmtArgs), ShouldEqual, 3)
+		})
+	})
+
+	Convey("Embeded And and Or", t, func() {
+		Convey("Embeded And with Or", func() {
+			w := Or(Eq("id", 0), 
+					And(Eq("id", 0),
+						Eq("id", 0),
+						Or(Eq("id", 0),
+							Eq("id", 0),
+						),
+					),
+					Or(Eq("id", 0),
+						Eq("id", 0),
+					),
+				)
+			var sb strings.Builder
+			var stmtArgs []interface{}
+			w.BuildSQL(&sb)
+			w.BuildArgs(&stmtArgs)
+
+			So(sb.String(), ShouldEqual, "`id`=? or `id`=? and `id`=? and (`id`=? or `id`=?) or (`id`=? or `id`=?)")
+			So(len(stmtArgs), ShouldEqual, 7)
 		})
 	})
 
