@@ -177,15 +177,15 @@
 
    // 使用map更新
    n, err = t.Update(map[string]interface{}{
-				"name": "new_name",
-				"tag":  "tag,tag,tag",
-         }, Where(Eq("id", id)), Limit(1))
+         "name": "new_name",
+         "tag":  "tag,tag,tag",
+      }, Where(Eq("id", id)), Limit(1))
 
    // 使用map更新部分字段
    n, err = t.Update(map[string]interface{}{
-				"name": "new_name",
-				"tag":  "tag,tag,tag",
-			}, Fields("name"), Where(Eq("id", id)), Limit(1))
+         "name": "new_name",
+         "tag":  "tag,tag,tag",
+      }, Fields("name"), Where(Eq("id", id)), Limit(1))
    ```
 
 - 删除
@@ -220,16 +220,18 @@
 
 ### Where
 
-|序号|示例|说明|
-|-|-|-|
-|1|Where("id=? and x=?", id, x)|常规格式化版本|
-|2|Where(Eq("id", id), Eq("x", x)...)|默认为and连接|
-|3|Where(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
+|示例|说明|
+|-|-|
+|Where("id=? and name=?", id, name)|常规格式化版本|
+|Where(Eq("id", id), Eq("name", name)...)|默认为and连接|
+|Where(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
 
 ### 预置Where条件
 
 |名称|示例|说明|
 |-|-|-|
+|逻辑与|And(...)|任意个参数，只接受下方的关系运算子|
+|逻辑或|Or(...)|任意个参数，只接受下方的关系运算子|
 |普通条件|Cond("id=?", id)|参数1为格式化字符串，后面跟占位参数|
 |相等|Eq("id", id)|两个参数，id=?|
 |不相等|Neq("id", id)|两个参数，id<>?|
@@ -243,36 +245,36 @@
 
 ### GroupBy
 
-|序号|示例|说明|
-|-|-|-|
-|1|GroupBy("id", "name"...)|-|
+|示例|说明|
+|-|-|
+|GroupBy("id", "name"...)|-|
 
 ### Having
 
-|序号|示例|说明|
-|-|-|-|
-|1|Having("id=? and name=?", id, name)|常规格式化版本|
-|2|Having(Eq("id", id), Eq("name", name)...)|默认为and连接|
-|3|Having(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
+|示例|说明|
+|-|-|
+|Having("id=? and name=?", id, name)|常规格式化版本|
+|Having(Eq("id", id), Eq("name", name)...)|默认为and连接|
+|Having(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
 
 ### OrderBy
 
-|序号|示例|说明|
-|-|-|-|
-|1|OrderBy("id desc", "name asc"...)|-|
+|示例|说明|
+|-|-|
+|OrderBy("id desc", "name asc"...)|-|
 
 ### Limit
 
-|序号|示例|说明|
-|-|-|-|
-|1|Limit(1)|分页大小为1|
-|2|Limit(0, 100)|偏移位置为0，分页大小为100|
+|示例|说明|
+|-|-|
+|Limit(1)|分页大小为1|
+|Limit(0, 100)|偏移位置为0，分页大小为100|
 
 ### OnDuplicateKeyUpdate
 
-|序号|示例|说明|
-|-|-|-|
-|1|OnDuplicateKeyUpdate(map[string]interface{}{"name": "new"})|解决主键冲突的更新|
+|示例|说明|
+|-|-|
+|OnDuplicateKeyUpdate(map[string]interface{}{"name": "new"})|解决主键冲突的更新|
 
 # 如何mock
 
