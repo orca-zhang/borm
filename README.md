@@ -320,6 +320,34 @@
       So(err, ShouldBeNil)
 ```
 
+# 避免dot import lint
+
+使用推荐方案会遭遇golint告警信息如下
+```
+xxx.go(123): should not use dot imports (golint)
+```
+
+## 改进方案
+
+引入包时，使用比较短的import alias别名
+
+   ``` golang
+   import b "github.com/orca-zhang/borm"
+   ```
+
+使用时，带上短别名
+   ``` golang
+   t := b.Table(d.DB, "t_usr", ctx)
+   
+   var o struct {
+      ID   int64  `borm:"id"`
+      Name string `borm:"name"`
+      Tag  string `borm:"tag"`
+   }
+   
+   n, err := t.Select(&o, b.Where("name = ?", name), b.GroupBy("id"), b.Having(b.Gt("id", 0)), b.OrderBy("id", "name"), b.Limit(1))
+   ```
+
 # 待完成
 
 - Select存储到map
