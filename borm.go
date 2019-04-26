@@ -48,6 +48,9 @@ var config struct {
 	Mock bool
 }
 
+// V - an alias object value type
+type V map[string]interface{}
+
 // Config .
 type Config struct {
 	Debug               bool
@@ -182,7 +185,7 @@ func Limit(i ...interface{}) *limitItem {
 }
 
 // OnDuplicateKeyUpdate .
-func OnDuplicateKeyUpdate(keyVals map[string]interface{}) *onDuplicateKeyUpdateItem {
+func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 	return &onDuplicateKeyUpdateItem{KVs: keyVals}
 }
 
@@ -215,7 +218,7 @@ func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 			}
 		}
 	// case reflect.Map:
-		// TODO
+	// TODO
 	default:
 		return 0, errors.New("argument 2 should be map or ptr")
 	}
@@ -240,7 +243,7 @@ func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 				args = args[1:]
 			}
 			// map类型
-		// } else if rt.Kind() == reflect.Map {
+			// } else if rt.Kind() == reflect.Map {
 			// TODO
 			// 其他类型
 		} else {
@@ -305,7 +308,7 @@ func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 				}
 			}
 			// map类型
-		// } else if rt.Kind() == reflect.Map {
+			// } else if rt.Kind() == reflect.Map {
 			// TODO
 			// 其他类型
 		} else {
@@ -436,7 +439,7 @@ func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
 			}
 		}
 	// case reflect.Map:
-		// TODO
+	// TODO
 	default:
 		return 0, errors.New("argument 2 should be map or ptr")
 	}
@@ -553,7 +556,7 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 
 	var stmtArgs []interface{}
 
-	if m, ok := obj.(map[string]interface{}); ok {
+	if m, ok := obj.(V); ok {
 		if args[0].Type() == _fields {
 			for _, field := range args[0].(*fieldsItem).Fields {
 				v := m[field]
@@ -586,7 +589,7 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 		case reflect.Ptr:
 			rt = rt.(reflect2.PtrType).Elem()
 		// case reflect.Map:
-			// TODO
+		// TODO
 		default:
 			return 0, errors.New("argument 2 should be map or ptr")
 		}
@@ -792,7 +795,7 @@ func (w *fieldsItem) BuildArgs(stmtArgs *[]interface{}) {
 }
 
 type onDuplicateKeyUpdateItem struct {
-	KVs map[string]interface{}
+	KVs V
 }
 
 func (w *onDuplicateKeyUpdateItem) Type() int {
@@ -803,7 +806,7 @@ func (w *onDuplicateKeyUpdateItem) BuildSQL(sb *strings.Builder) {
 	if len(w.KVs) <= 0 {
 		return
 	}
-	sb.WriteString(" on duplicate key update ")	
+	sb.WriteString(" on duplicate key update ")
 	i := 0
 	for k := range w.KVs {
 		if i > 0 {
