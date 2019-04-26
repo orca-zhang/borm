@@ -143,7 +143,9 @@
 
 4. 执行操作
 
-**置顶说明：CRUD接口返回值为 (影响的条数，错误)**
+- **CRUD接口返回值为 (影响的条数，错误)**
+
+- **类型`V`为`map[string]interface{}`的缩写形式，参考`gin.H`**
 
 - 插入
    ``` golang
@@ -155,7 +157,7 @@
 
    // 解决主键冲突
    n, err = t.Insert(&o, Fields("name", "tag"),
-      OnDuplicateKeyUpdate(map[string]interface{}{
+      OnDuplicateKeyUpdate(V{
          "name": "new_name",
       }))
    ```
@@ -176,13 +178,13 @@
    n, err = t.Update(&o, Where(Eq("id", id)))
 
    // 使用map更新
-   n, err = t.Update(map[string]interface{}{
+   n, err = t.Update(V{
          "name": "new_name",
          "tag":  "tag,tag,tag",
       }, Where(Eq("id", id)), Limit(1))
 
    // 使用map更新部分字段
-   n, err = t.Update(map[string]interface{}{
+   n, err = t.Update(V{
          "name": "new_name",
          "tag":  "tag,tag,tag",
       }, Fields("name"), Where(Eq("id", id)), Limit(1))
@@ -274,7 +276,7 @@
 
 |示例|说明|
 |-|-|
-|OnDuplicateKeyUpdate(map[string]interface{}{"name": "new"})|解决主键冲突的更新|
+|OnDuplicateKeyUpdate(V{"name": "new"})|解决主键冲突的更新|
 
 # 如何mock
 
