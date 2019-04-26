@@ -40,7 +40,7 @@ type x struct {
 }
 
 type x1 struct {
-	X     string    `borm:"name"`
+	X     string `borm:"name"`
 	ctime int64
 }
 
@@ -244,9 +244,9 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnDuplicateKeyUpdate(map[string]interface{}{
+			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnDuplicateKeyUpdate(V{
 				"name": "OnDuplicateKeyUpdate",
-				"age" : 29,
+				"age":  29,
 			}))
 
 			So(err, ShouldBeNil)
@@ -276,7 +276,7 @@ func TestUpdate(t *testing.T) {
 		Convey("update with map", func() {
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Update(map[string]interface{}{
+			n, err := tbl.Update(V{
 				"name": "OrcaUpdated",
 				"age":  88,
 			}, Where("id = ?", 0))
@@ -288,7 +288,7 @@ func TestUpdate(t *testing.T) {
 		Convey("update with map & Fields", func() {
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Update(map[string]interface{}{
+			n, err := tbl.Update(V{
 				"name": "OrcaUpdatedFields",
 				"age":  88,
 			}, Fields("name", "age"), Where("id = ?", 0))
@@ -1343,7 +1343,7 @@ func TestMock(t *testing.T) {
 	})
 }
 
-func PanicCheck(f func ()) (err interface{}) {
+func PanicCheck(f func()) (err interface{}) {
 	defer func() {
 		if t := recover(); t != nil {
 			err = t
@@ -1383,7 +1383,7 @@ func TestMisc(t *testing.T) {
 
 	Convey("Where", t, func() {
 		Convey("Where panic", func() {
-			So(PanicCheck(func () {
+			So(PanicCheck(func() {
 				Where()
 			}), ShouldNotBeNil)
 		})
@@ -1393,7 +1393,7 @@ func TestMisc(t *testing.T) {
 			var stmtArgs []interface{}
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
-			
+
 			So(sb.String(), ShouldEqual, " where 1=1")
 			So(len(stmtArgs), ShouldEqual, 0)
 		})
@@ -1413,17 +1413,17 @@ func TestMisc(t *testing.T) {
 			var stmtArgs []interface{}
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
-			
+
 			So(sb.String(), ShouldEqual, " where `id`=?")
 			So(len(stmtArgs), ShouldEqual, 1)
 		})
 		Convey("Where In 2 slice", func() {
-			w := Where(In("id", []interface{}{1,2}))
+			w := Where(In("id", []interface{}{1, 2}))
 			var sb strings.Builder
 			var stmtArgs []interface{}
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
-			
+
 			So(sb.String(), ShouldEqual, " where `id` in (?,?)")
 			So(len(stmtArgs), ShouldEqual, 2)
 		})
@@ -1583,7 +1583,7 @@ func TestMisc(t *testing.T) {
 
 	Convey("Having", t, func() {
 		Convey("Having panic", func() {
-			So(PanicCheck(func () {
+			So(PanicCheck(func() {
 				Having()
 			}), ShouldNotBeNil)
 		})
@@ -1743,17 +1743,17 @@ func TestMisc(t *testing.T) {
 
 	Convey("Embeded And and Or", t, func() {
 		Convey("Embeded And with Or", func() {
-			w := Or(Eq("id1", 0), 
-					And(Eq("id2", 0),
-						Eq("id3", 0),
-						Or(Eq("id4", 0),
-							Eq("id5", 0),
-						),
+			w := Or(Eq("id1", 0),
+				And(Eq("id2", 0),
+					Eq("id3", 0),
+					Or(Eq("id4", 0),
+						Eq("id5", 0),
 					),
-					Or(Eq("id6", 0),
-						Eq("id7", 0),
-					),
-				)
+				),
+				Or(Eq("id6", 0),
+					Eq("id7", 0),
+				),
+			)
 			var sb strings.Builder
 			var stmtArgs []interface{}
 			w.BuildSQL(&sb)
@@ -1766,12 +1766,12 @@ func TestMisc(t *testing.T) {
 
 	Convey("Limit", t, func() {
 		Convey("Limit panic", func() {
-			So(PanicCheck(func () {
+			So(PanicCheck(func() {
 				Limit()
 			}), ShouldNotBeNil)
 		})
 		Convey("Limit panic 2", func() {
-			So(PanicCheck(func () {
+			So(PanicCheck(func() {
 				Limit(1, 2, 3)
 			}), ShouldNotBeNil)
 		})
@@ -1785,7 +1785,7 @@ func TestMisc(t *testing.T) {
 			_, err := t.Select(&o)
 			So(err, ShouldNotBeNil)
 		})
-		
+
 		Convey("Select - arg type err", func() {
 			t := Table(db, "test", context.TODO())
 
@@ -1905,7 +1905,7 @@ func TestMisc(t *testing.T) {
 			So(n, ShouldBeGreaterThan, 0)
 		})
 	})
-	
+
 	Convey("Update", t, func() {
 		Convey("Update - arg len err", func() {
 			t := Table(db, "test", context.TODO())
@@ -1993,7 +1993,7 @@ func TestMisc(t *testing.T) {
 	})
 
 	Convey("OnDuplicateKeyUpdate - Empty", t, func() {
-		w := OnDuplicateKeyUpdate(map[string]interface{}{})
+		w := OnDuplicateKeyUpdate(V{})
 		var sb strings.Builder
 		var stmtArgs []interface{}
 		w.BuildSQL(&sb)
@@ -2025,12 +2025,12 @@ func TestMisc(t *testing.T) {
 
 	Convey("checkInTestFile", t, func() {
 		Convey("checkInTestFile normal", func() {
-			So(PanicCheck(func () {
+			So(PanicCheck(func() {
 				checkInTestFile("aaa_test.go")
 			}), ShouldBeNil)
 		})
 		Convey("checkInTestFile panic", func() {
-			So(PanicCheck(func () {
+			So(PanicCheck(func() {
 				checkInTestFile("aaa.go")
 			}), ShouldNotBeNil)
 		})
@@ -2047,9 +2047,9 @@ func TestMisc(t *testing.T) {
 	Convey("strconvErr", t, func() {
 		Convey("strconv.NumError", func() {
 			err := &strconv.NumError{
-				Func:"fn",
-				Num: "str", 
-				Err: strconv.ErrSyntax,
+				Func: "fn",
+				Num:  "str",
+				Err:  strconv.ErrSyntax,
 			}
 			So(strconvErr(err), ShouldEqual, err.Err)
 		})
