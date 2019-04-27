@@ -1223,6 +1223,22 @@ func testInsert(db *sql.DB) (int, error) {
 	return n, err
 }
 
+func testInsertIgnore(db *sql.DB) (int, error) {
+	var o x
+	tbl := Table(db, "test").Debug()
+
+	n, err := tbl.InsertIgnore(&o)
+	return n, err
+}
+
+func testReplaceInto(db *sql.DB) (int, error) {
+	var o x
+	tbl := Table(db, "test").Debug()
+
+	n, err := tbl.ReplaceInto(&o)
+	return n, err
+}
+
 func testUpdate(db *sql.DB) (int, error) {
 	var o x
 	tbl := Table(db, "test").Debug()
@@ -1273,6 +1289,38 @@ func TestMock(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 10)
+
+			// 检查是否全部命中
+			err = BormMockFinish()
+			So(err, ShouldBeNil)
+		})
+
+		Convey("test InsertIgnore", func() {
+			// 必须在_test.go里面设置mock
+			// 注意方法名需要带包名
+			BormMock("test", "InsertIgnore", "*.testInsertIgnore", "", "", nil, 22, nil)
+
+			// 调用被测试函数
+			n1, err := testInsertIgnore(db)
+
+			So(err, ShouldBeNil)
+			So(n1, ShouldEqual, 22)
+
+			// 检查是否全部命中
+			err = BormMockFinish()
+			So(err, ShouldBeNil)
+		})
+
+		Convey("test ReplaceInto", func() {
+			// 必须在_test.go里面设置mock
+			// 注意方法名需要带包名
+			BormMock("test", "ReplaceInto", "*.testReplaceInto", "", "", nil, 22, nil)
+
+			// 调用被测试函数
+			n1, err := testReplaceInto(db)
+
+			So(err, ShouldBeNil)
+			So(n1, ShouldEqual, 22)
 
 			// 检查是否全部命中
 			err = BormMockFinish()
