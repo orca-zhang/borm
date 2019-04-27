@@ -1326,11 +1326,19 @@ RETRY:
 	case 0:
 		return &ormCond{Op: "1=1"}
 	case 1:
-		// 单条不用in，用等于
-		if arg, ok := args[0].([]interface{}); ok {
-			args = arg
+		rt := reflect2.TypeOf(args[0])
+		// 如果第一个参数是数组，转化成interface数组
+		if rt.Kind() == reflect.Slice {
+			len := rt.(reflect2.SliceType).UnsafeLengthOf(reflect2.PtrOf(args[0]))
+			argsAux := make([]interface{}, len)
+			rtElem := rt.(reflect2.ListType).Elem()
+			for i := 0; i < len; i++ {
+				argsAux[i] = rtElem.PackEFace(rt.(reflect2.ListType).UnsafeGetIndex(reflect2.PtrOf(args[0]), i))
+			}
+			args = argsAux
 			goto RETRY
 		} else {
+			// 单条不用in，用等于
 			return Eq(field, args[0])
 		}
 	}
