@@ -193,9 +193,9 @@ func TestInsert(t *testing.T) {
 				Y:  20,
 				Z1: 1551405784,
 			}
-			tbl := Table(db, "test").ReplaceInto().Debug()
+			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(&o)
+			n, err := tbl.ReplaceInto(&o)
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -214,9 +214,9 @@ func TestInsert(t *testing.T) {
 					Z1: 1551405784,
 				},
 			}
-			tbl := Table(db, "test").InsertIgnore().Debug()
+			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(&o)
+			n, err := tbl.InsertIgnore(&o)
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
