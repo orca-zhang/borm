@@ -151,6 +151,8 @@
    ``` golang
    // o可以是对象/slice/ptr slice
    n, err = t.Insert(&o)
+   n, err = t.InsertIgnore(&o)
+   n, err = t.ReplaceInto(&o)
 
    // 只插入部分字段（其他使用缺省）
    n, err = t.Insert(&o, Fields("name", "tag"))
@@ -208,16 +210,13 @@
 |Debug|打印sql语句|
 |Reuse|根据调用位置复用sql和存储方式|
 |UseNameWhenTagEmpty|用未设置borm tag的字段名本身作为待获取的db字段|
-|ReplaceInto|调用Insert时，使用replace into|
-|InsertIgnore|调用Insert时，使用insert ignore into|
 |ToTimestamp|调用Insert时，使用时间戳，而非格式化字符串|
 
 选项使用示例：
    ``` golang
    n, err = t.Debug().Insert(&o)
 
-   t.InsertIgnore()
-   n, err = t.Insert(&o)
+   n, err = t.ToTimestamp().Insert(&o)
    ```
 
 ### Where
@@ -286,7 +285,7 @@
 
 ### 说明：
 
-- 前四个参数分别为`tbl`, `fun`, `caller`, `file`, `pkg`
+- 前五个参数分别为`tbl`, `fun`, `caller`, `file`, `pkg`
    - 设置为空默认为匹配
    - 支持通配符'?'和'*'，分别代表匹配一个字符和多个字符
    - 不区分大小写
@@ -305,23 +304,36 @@
 
 ### 使用示例：
 
-背景：在`x.test`方法中查询`tbl`的数据，我们需要mock数据库的操作
+待测函数：
+
+```golang
+   package x
+
+   func test(db *sql.DB) (x, int, error) {
+      var o x
+      tbl := Table(db, "tbl")
+      n, err := tbl.Select(&o, Where("`id` >= ?", 1), Limit(100))
+      return o, n, err
+   }
+```
+
+在`x.test`方法中查询`tbl`的数据，我们需要mock数据库的操作
 
 ``` golang
-      // 必须在_test.go里面设置mock
-      // 注意调用方方法名需要带包名
-      BormMock("tbl", "Select", "*.test", "", "", &o, 1, nil)
+   // 必须在_test.go里面设置mock
+   // 注意调用方方法名需要带包名
+   BormMock("tbl", "Select", "*.test", "", "", &o, 1, nil)
 
-      // 调用被测试函数
-      o1, n1, err := test(db)
+   // 调用被测试函数
+   o1, n1, err := test(db)
 
-      So(err, ShouldBeNil)
-      So(n1, ShouldEqual, 1)
-      So(o1, ShouldResemble, o)
+   So(err, ShouldBeNil)
+   So(n1, ShouldEqual, 1)
+   So(o1, ShouldResemble, o)
 
-      // 检查是否全部命中
-      err = BormMockFinish()
-      So(err, ShouldBeNil)
+   // 检查是否全部命中
+   err = BormMockFinish()
+   So(err, ShouldBeNil)
 ```
 
 # 避免dot import lint
@@ -349,7 +361,12 @@ xxx.go(123): should not use dot imports (golint)
       Tag  string `borm:"tag"`
    }
    
-   n, err := t.Select(&o, b.Where("name = ?", name), b.GroupBy("id"), b.Having(b.Gt("id", 0)), b.OrderBy("id", "name"), b.Limit(1))
+   n, err := t.Select(&o, 
+      b.Where("name = ?", name), 
+      b.GroupBy("id"), 
+      b.Having(b.Gt("id", 0)), 
+      b.OrderBy("id", "name"), 
+      b.Limit(1))
    ```
 
 # 待完成
@@ -359,3 +376,4 @@ xxx.go(123): should not use dot imports (golint)
 - Insert/Update支持非指针类型
 - Benchmark报告
 - 事务相关支持
+- 联合查询
