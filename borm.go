@@ -56,22 +56,19 @@ type Config struct {
 	Debug               bool
 	Reuse               bool
 	UseNameWhenTagEmpty bool
-
-	ReplaceInto  bool
-	InsertIgnore bool
-	ToTimestamp  bool
+	ToTimestamp         bool
 }
 
 // Table .
-func Table(db dbIFace, name string, ctx ...context.Context) *table {
+func Table(db BormDBIFace, name string, ctx ...context.Context) *BormTable {
 	if len(ctx) > 0 {
-		return &table{
+		return &BormTable{
 			DB:   db,
 			Name: name,
 			ctx:  ctx[0],
 		}
 	}
-	return &table{
+	return &BormTable{
 		DB:   db,
 		Name: name,
 		ctx:  context.Background(),
@@ -79,33 +76,23 @@ func Table(db dbIFace, name string, ctx ...context.Context) *table {
 }
 
 // Reuse .
-func (t *table) Reuse() *table {
+func (t *BormTable) Reuse() *BormTable {
 	t.Cfg.Reuse = true
 	return t
 }
 
 // Debug .
-func (t *table) Debug() *table {
+func (t *BormTable) Debug() *BormTable {
 	t.Cfg.Debug = true
 	return t
 }
 
-func (t *table) UseNameWhenTagEmpty() *table {
+func (t *BormTable) UseNameWhenTagEmpty() *BormTable {
 	t.Cfg.UseNameWhenTagEmpty = true
 	return t
 }
 
-func (t *table) ReplaceInto() *table {
-	t.Cfg.ReplaceInto = true
-	return t
-}
-
-func (t *table) InsertIgnore() *table {
-	t.Cfg.InsertIgnore = true
-	return t
-}
-
-func (t *table) ToTimestamp() *table {
+func (t *BormTable) ToTimestamp() *BormTable {
 	t.Cfg.ToTimestamp = true
 	return t
 }
@@ -189,7 +176,7 @@ func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 	return &onDuplicateKeyUpdateItem{KVs: keyVals}
 }
 
-func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
+func (t *BormTable) Select(res interface{}, args ...ormItem) (int, error) {
 	if len(args) <= 0 {
 		return 0, errors.New("argument 3 cannot be omitted")
 	}
@@ -390,7 +377,29 @@ func (t *table) Select(res interface{}, args ...ormItem) (int, error) {
 	return count, err
 }
 
-func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
+func (t *BormTable) InsertIgnore(objs interface{}, args ...ormItem) (int, error) {
+	if config.Mock {
+		pc, fileName, _, _ := runtime.Caller(1)
+		if ok, _, n, e := checkMock(t.Name, "InsertIgnore", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
+			return n, e
+		}
+	}
+
+	return t.insert("insert ignore into ", objs, args)
+}
+
+func (t *BormTable) ReplaceInto(objs interface{}, args ...ormItem) (int, error) {
+	if config.Mock {
+		pc, fileName, _, _ := runtime.Caller(1)
+		if ok, _, n, e := checkMock(t.Name, "ReplaceInto", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
+			return n, e
+		}
+	}
+
+	return t.insert("replace into ", objs, args)
+}
+
+func (t *BormTable) Insert(objs interface{}, args ...ormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Insert", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -398,6 +407,10 @@ func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
 		}
 	}
 
+	return t.insert("insert into ", objs, args)
+}
+
+func (t *BormTable) insert(prefix string, objs interface{}, args []ormItem) (int, error) {
 	var (
 		rt         = reflect2.TypeOf(objs)
 		isArray    bool
@@ -410,15 +423,7 @@ func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
 		cols     []reflect2.StructField
 	)
 
-	if t.Cfg.ReplaceInto {
-		sb.WriteString("replace into ")
-	} else {
-		if t.Cfg.InsertIgnore {
-			sb.WriteString("insert ignore into ")
-		} else {
-			sb.WriteString("insert into ")
-		}
-	}
+	sb.WriteString(prefix)
 
 	fieldEscape(&sb, t.Name)
 
@@ -537,7 +542,7 @@ func (t *table) Insert(objs interface{}, args ...ormItem) (int, error) {
 	return int(row), nil
 }
 
-func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
+func (t *BormTable) Update(obj interface{}, args ...ormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
 		if ok, _, n, e := checkMock(t.Name, "Update", runtime.FuncForPC(pc).Name(), fileName, path.Dir(fileName)); ok {
@@ -668,7 +673,7 @@ func (t *table) Update(obj interface{}, args ...ormItem) (int, error) {
 	return int(row), nil
 }
 
-func (t *table) Delete(args ...ormItem) (int, error) {
+func (t *BormTable) Delete(args ...ormItem) (int, error) {
 	if len(args) <= 0 {
 		return 0, errors.New("argument 1 cannot be omitted")
 	}
@@ -704,7 +709,7 @@ func (t *table) Delete(args ...ormItem) (int, error) {
 	return int(row), nil
 }
 
-func (t *table) inputArgs(stmtArgs *[]interface{}, cols []reflect2.StructField, rtPtr, s reflect2.Type, ptr bool, x unsafe.Pointer) {
+func (t *BormTable) inputArgs(stmtArgs *[]interface{}, cols []reflect2.StructField, rtPtr, s reflect2.Type, ptr bool, x unsafe.Pointer) {
 	for _, col := range cols {
 		var v interface{}
 		if ptr {
@@ -726,14 +731,14 @@ func (t *table) inputArgs(stmtArgs *[]interface{}, cols []reflect2.StructField, 
 	}
 }
 
-type dbIFace interface {
+type BormDBIFace interface {
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
 
-type table struct {
-	DB   dbIFace
+type BormTable struct {
+	DB   BormDBIFace
 	Name string
 	Cfg  Config
 	ctx  context.Context
@@ -753,7 +758,7 @@ func fieldEscape(sb *strings.Builder, field string) {
 	}
 }
 
-func (t *table) getStructFieldMap(s reflect2.StructType) map[string]reflect2.StructField {
+func (t *BormTable) getStructFieldMap(s reflect2.StructType) map[string]reflect2.StructField {
 	m := make(map[string]reflect2.StructField)
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
