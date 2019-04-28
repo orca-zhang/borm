@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/orca-zhang/borm/branch/master/graph/badge.svg)](https://codecov.io/gh/orca-zhang/borm)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Forca-zhang%2Fborm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Forca-zhang%2Fborm?ref=badge_shield)
 
-🏎️ 更好的ORM库 (Better ORM library that is simple, fast and self-mock for Go)
+🏎️ 更好的ORM库 (Better ORM library that is simple, fast and self-mockable for Go)
 
 # 目标
 - 易用：SQL-Like（一把梭：One-Line-CRUD）
