@@ -150,7 +150,7 @@ func TestSelect(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
-			fmt.Printf("%+v\n", cnt)
+			So(n, ShouldBeGreaterThan, 1)
 		})
 	})
 }
