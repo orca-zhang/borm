@@ -150,7 +150,7 @@ func TestSelect(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
-			So(n, ShouldBeGreaterThan, 1)
+			So(n, ShouldBeGreaterThan, 0)
 		})
 	})
 }
