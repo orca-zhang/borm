@@ -187,7 +187,9 @@ func (t *BormTable) Select(res interface{}, args ...ormItem) (int, error) {
 		isPtrArray bool
 		rtElem     = rt
 
-		item     *DataBindingItem
+		sb       strings.Builder
+		cols     []interface{}
+		elem     interface{}
 		stmtArgs []interface{}
 	)
 
@@ -218,130 +220,96 @@ func (t *BormTable) Select(res interface{}, args ...ormItem) (int, error) {
 		}
 	}
 
-	if t.Cfg.Reuse {
-		_, fileName, line, _ := runtime.Caller(1)
-		item = loadFromCache(fileName, line)
+	sb.WriteString("select ")
+
+	// struct类型
+	if rtElem.Kind() == reflect.Struct {
+		s := rtElem.(reflect2.StructType)
+		if isArray {
+			elem = rtElem.New()
+		} else {
+			elem = res
+		}
+
+		if args[0].Type() == _fields {
+			m := t.getStructFieldMap(s)
+
+			for _, field := range args[0].(*fieldsItem).Fields {
+				f := m[field]
+				cols = append(cols, &scanner{
+					Type: f.Type(),
+					Val:  f.UnsafeGet(reflect2.PtrOf(elem)),
+				})
+			}
+
+			(args[0]).BuildSQL(&sb)
+			args = args[1:]
+
+		} else {
+			for i := 0; i < s.NumField(); i++ {
+				f := s.Field(i)
+				ft := f.Tag().Get("borm")
+
+				if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
+					continue
+				}
+
+				if len(cols) > 0 {
+					sb.WriteString(",")
+				}
+
+				if ft == "" {
+					fieldEscape(&sb, f.Name())
+				} else {
+					fieldEscape(&sb, ft)
+				}
+
+				cols = append(cols, &scanner{
+					Type: f.Type(),
+					Val:  f.UnsafeGet(reflect2.PtrOf(elem)),
+				})
+			}
+		}
+		// map类型
+		// } else if rt.Kind() == reflect.Map {
+		// TODO
+		// 其他类型
+	} else {
+		// 必须有fields且为1
+		if args[0].Type() != _fields {
+			return 0, errors.New("argument 3 need ONE Fields(\"name\") with ONE field")
+		}
+
+		fi := args[0].(*fieldsItem)
+		if len(fi.Fields) < 1 {
+			return 0, errors.New("too few fields")
+		}
+
+		cols = append(cols, &scanner{
+			Type: rtElem,
+			Val:  reflect2.PtrOf(res),
+		})
+
+		fieldEscape(&sb, fi.Fields[0])
+		args = args[1:]
 	}
 
-	if item != nil {
-		// struct类型
-		if rtElem.Kind() == reflect.Struct {
-			if args[0].Type() == _fields {
-				args = args[1:]
-			}
-			// map类型
-			// } else if rt.Kind() == reflect.Map {
-			// TODO
-			// 其他类型
-		} else {
-			args = args[1:]
-		}
+	sb.WriteString(" from ")
 
-		for _, arg := range args {
-			arg.BuildArgs(&stmtArgs)
-		}
-	} else {
-		item = &DataBindingItem{Type: rtElem}
+	fieldEscape(&sb, t.Name)
 
-		var sb strings.Builder
-		sb.WriteString("select ")
-
-		// struct类型
-		if rtElem.Kind() == reflect.Struct {
-			s := rtElem.(reflect2.StructType)
-			if isArray {
-				item.Elem = rtElem.New()
-			} else {
-				item.Elem = res
-			}
-
-			if args[0].Type() == _fields {
-				m := t.getStructFieldMap(s)
-
-				for _, field := range args[0].(*fieldsItem).Fields {
-					f := m[field]
-					item.Cols = append(item.Cols, &scanner{
-						Type: f.Type(),
-						Val:  f.UnsafeGet(reflect2.PtrOf(item.Elem)),
-					})
-				}
-
-				(args[0]).BuildSQL(&sb)
-				args = args[1:]
-
-			} else {
-				for i := 0; i < s.NumField(); i++ {
-					f := s.Field(i)
-					ft := f.Tag().Get("borm")
-
-					if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
-						continue
-					}
-
-					if len(item.Cols) > 0 {
-						sb.WriteString(",")
-					}
-
-					if ft == "" {
-						fieldEscape(&sb, f.Name())
-					} else {
-						fieldEscape(&sb, ft)
-					}
-
-					item.Cols = append(item.Cols, &scanner{
-						Type: f.Type(),
-						Val:  f.UnsafeGet(reflect2.PtrOf(item.Elem)),
-					})
-				}
-			}
-			// map类型
-			// } else if rt.Kind() == reflect.Map {
-			// TODO
-			// 其他类型
-		} else {
-			// 必须有fields且为1
-			if args[0].Type() != _fields {
-				return 0, errors.New("argument 3 need ONE Fields(\"name\") with ONE field")
-			}
-
-			fi := args[0].(*fieldsItem)
-			if len(fi.Fields) < 1 {
-				return 0, errors.New("too few fields")
-			}
-
-			item.Cols = append(item.Cols, &scanner{
-				Type: rtElem,
-				Val:  reflect2.PtrOf(res),
-			})
-
-			fieldEscape(&sb, fi.Fields[0])
-			args = args[1:]
-		}
-
-		sb.WriteString(" from ")
-
-		fieldEscape(&sb, t.Name)
-
-		for _, arg := range args {
-			arg.BuildSQL(&sb)
-			arg.BuildArgs(&stmtArgs)
-		}
-
-		item.SQL = sb.String()
-
-		if t.Cfg.Reuse {
-			_, fileName, line, _ := runtime.Caller(1)
-			storeToCache(fileName, line, item)
-		}
+	for _, arg := range args {
+		arg.BuildSQL(&sb)
+		arg.BuildArgs(&stmtArgs)
 	}
 
 	if t.Cfg.Debug {
-		log.Println(item.SQL, stmtArgs)
+		log.Println(sb.String(), stmtArgs)
 	}
 
 	if !isArray {
 		// fire
-		err := t.DB.QueryRowContext(t.ctx, item.SQL, stmtArgs...).Scan(item.Cols...)
+		err := t.DB.QueryRowContext(t.ctx, sb.String(), stmtArgs...).Scan(cols...)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return 0, nil
@@ -352,24 +320,24 @@ func (t *BormTable) Select(res interface{}, args ...ormItem) (int, error) {
 	}
 
 	// fire
-	rows, err := t.DB.QueryContext(t.ctx, item.SQL, stmtArgs...)
+	rows, err := t.DB.QueryContext(t.ctx, sb.String(), stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
 
 	count := 0
 	for rows.Next() {
-		err = rows.Scan(item.Cols...)
+		err = rows.Scan(cols...)
 		if err != nil {
 			break
 		}
 
 		if isPtrArray {
 			copyElem := rtElem.UnsafeNew()
-			rtElem.UnsafeSet(copyElem, reflect2.PtrOf(item.Elem))
+			rtElem.UnsafeSet(copyElem, reflect2.PtrOf(elem))
 			rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), unsafe.Pointer(&copyElem))
 		} else {
-			rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), reflect2.PtrOf(item.Elem))
+			rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), reflect2.PtrOf(elem))
 		}
 		count++
 	}
@@ -1354,34 +1322,6 @@ RETRY:
 	sb.WriteString(")")
 	return &ormCond{Field: field, Op: sb.String(), Args: args}
 }
-
-/*
-	data-binding相关
-*/
-
-// DataBindingItem .
-type DataBindingItem struct {
-	SQL  string
-	Cols []interface{}
-	Type reflect2.Type
-	Elem interface{}
-}
-
-func storeToCache(file string, line int, item *DataBindingItem) {
-	_dataBindingCache.Store(fmt.Sprintf("%s:%d", file, line), item)
-	return
-}
-
-func loadFromCache(file string, line int) *DataBindingItem {
-	if i, ok := _dataBindingCache.Load(fmt.Sprintf("%s:%d", file, line)); ok {
-		return i.(*DataBindingItem)
-	}
-	return nil
-}
-
-var (
-	_dataBindingCache sync.Map
-)
 
 /*
    Mock相关
