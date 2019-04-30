@@ -235,11 +235,12 @@ func (t *BormTable) Select(res interface{}, args ...ormItem) (int, error) {
 			m := t.getStructFieldMap(s)
 
 			for _, field := range args[0].(*fieldsItem).Fields {
-				f := m[field]
-				cols = append(cols, &scanner{
-					Type: f.Type(),
-					Val:  f.UnsafeGet(reflect2.PtrOf(elem)),
-				})
+				if f, ok := m[field]; ok {
+					cols = append(cols, &scanner{
+						Type: f.Type(),
+						Val:  f.UnsafeGet(reflect2.PtrOf(elem)),
+					})
+				}
 			}
 
 			(args[0]).BuildSQL(&sb)
@@ -428,8 +429,7 @@ func (t *BormTable) insert(prefix string, objs interface{}, args []ormItem) (int
 		m := t.getStructFieldMap(s)
 
 		for _, field := range args[0].(*fieldsItem).Fields {
-			f := m[field]
-			if f != nil {
+			if f, ok := m[field]; ok {
 				cols = append(cols, f)
 			}
 		}
@@ -532,14 +532,13 @@ func (t *BormTable) Update(obj interface{}, args ...ormItem) (int, error) {
 	if m, ok := obj.(V); ok {
 		if args[0].Type() == _fields {
 			for _, field := range args[0].(*fieldsItem).Fields {
-				v := m[field]
-				if v != nil {
+				if f, ok := m[field]; ok {
 					if len(stmtArgs) > 0 {
 						sb.WriteString(",")
 					}
 					fieldEscape(&sb, field)
 					sb.WriteString("=?")
-					stmtArgs = append(stmtArgs, v)
+					stmtArgs = append(stmtArgs, f)
 				}
 			}
 
@@ -581,8 +580,7 @@ func (t *BormTable) Update(obj interface{}, args ...ormItem) (int, error) {
 			m := t.getStructFieldMap(s)
 
 			for i, field := range args[0].(*fieldsItem).Fields {
-				f := m[field]
-				if f != nil {
+				if f, ok := m[field]; ok {
 					cols = append(cols, f)
 				}
 
@@ -1111,7 +1109,8 @@ func (dest *scanner) Scan(src interface{}) error {
 	// NULL值
 	if st.UnsafeIsNil(reflect2.PtrOf(src)) {
 		// 设置成默认值，如果是指针，那么是空指针
-		dt.UnsafeSet(dest.Val, dt.UnsafeNew())
+		nilPtr := dt.UnsafeNew()
+		dt.UnsafeSet(dest.Val, unsafe.Pointer(&nilPtr))
 		return nil
 	}
 
