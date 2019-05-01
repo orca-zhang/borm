@@ -1110,7 +1110,7 @@ func (dest *scanner) Scan(src interface{}) error {
 	if st.UnsafeIsNil(reflect2.PtrOf(src)) {
 		// 设置成默认值，如果是指针，那么是空指针
 		nilPtr := dt.UnsafeNew()
-		dt.UnsafeSet(dest.Val, unsafe.Pointer(&nilPtr))
+		dt.UnsafeSet(dest.Val, reflect2.PtrOf(nilPtr))
 		return nil
 	}
 
