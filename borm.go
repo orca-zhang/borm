@@ -1063,6 +1063,7 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 			case reflect.Float64:
 				*(*float64)(ptrVal) = float64(ts)
 			}
+			return nil
 		} else if isTime {
 			// 获取数值时间戳
 			i64, err := strconv.ParseInt(tmp, 10, 64)
