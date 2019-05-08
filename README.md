@@ -116,14 +116,14 @@
 
 1. 引入包
    ``` golang
-   import . "github.com/orca-zhang/borm"
+   import b "github.com/orca-zhang/borm"
    ```
 
 2. 定义Table对象
    ``` golang
-   t := Table(d.DB, "t_usr")
+   t := b.Table(d.DB, "t_usr")
 
-   t1 := Table(d.DB, "t_usr", ctx)
+   t1 := b.Table(d.DB, "t_usr", ctx)
    ```
 
 - `d.DB`是支持Exec/Query/QueryRow的数据库连接对象
@@ -156,11 +156,11 @@
    n, err = t.ReplaceInto(&o)
 
    // 只插入部分字段（其他使用缺省）
-   n, err = t.Insert(&o, Fields("name", "tag"))
+   n, err = t.Insert(&o, b.Fields("name", "tag"))
 
    // 解决主键冲突
-   n, err = t.Insert(&o, Fields("name", "tag"),
-      OnDuplicateKeyUpdate(V{
+   n, err = t.Insert(&o, b.Fields("name", "tag"),
+      b.OnDuplicateKeyUpdate(b.V{
          "name": "new_name",
       }))
    ```
@@ -168,38 +168,45 @@
 - 查询
    ``` golang
    // o可以是对象/slice/ptr slice
-   n, err = t.Select(&o, Where("name = ?", name), GroupBy("id"), Having(Gt("id", 0)), OrderBy("id", "name"), Limit(0, 100))
+   n, err := t.Select(&o, 
+      b.Where("name = ?", name), 
+      b.GroupBy("id"), 
+      b.Having(b.Gt("id", 0)), 
+      b.OrderBy("id", "name"), 
+      b.Limit(1))
 
    // 使用基本类型获取条目数（n的值为1，因为结果只有1条）
    var cnt int64
-   n, err = t.Select(&cnt, Fields("count(1)"), Where("name = ?", name))
+   n, err = t.Select(&cnt, b.Fields("count(1)"), b.Where("name = ?", name))
    ```
 
 - 更新
    ``` golang
    // o可以是对象/slice/ptr slice
-   n, err = t.Update(&o, Where(Eq("id", id)))
+   n, err = t.Update(&o, b.Where(b.Eq("id", id)))
 
    // 使用map更新
-   n, err = t.Update(V{
+   n, err = t.Update(b.V{
          "name": "new_name",
          "tag":  "tag,tag,tag",
-      }, Where(Eq("id", id)), Limit(1))
+      }, b.Where(b.Eq("id", id)), b.Limit(1))
 
    // 使用map更新部分字段
-   n, err = t.Update(V{
+   n, err = t.Update(b.V{
          "name": "new_name",
          "tag":  "tag,tag,tag",
-      }, Fields("name"), Where(Eq("id", id)), Limit(1))
+      }, b.Fields("name"), b.Where(b.Eq("id", id)), b.Limit(1))
+
+   n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)), b.Limit(1))
    ```
 
 - 删除
    ``` golang
    // 根据条件删除
-   n, err = t.Delete(Where("name = ?", name))
+   n, err = t.Delete(b.Where("name = ?", name))
 
    // 根据条件删除部分条数
-   n, err = t.Delete(Where(Eq("id", id)), Limit(1))
+   n, err = t.Delete(b.Where(b.Eq("id", id)), b.Limit(1))
    ```
 
 # 其他细节
@@ -310,10 +317,10 @@
 ```golang
    package x
 
-   func test(db *sql.DB) (x, int, error) {
-      var o x
-      tbl := Table(db, "tbl")
-      n, err := tbl.Select(&o, Where("`id` >= ?", 1), Limit(100))
+   func test(db *sql.DB) (X, int, error) {
+      var o X
+      tbl := b.Table(db, "tbl")
+      n, err := tbl.Select(&o, b.Where("`id` >= ?", 1), b.Limit(100))
       return o, n, err
    }
 ```
@@ -323,7 +330,7 @@
 ``` golang
    // 必须在_test.go里面设置mock
    // 注意调用方方法名需要带包名
-   BormMock("tbl", "Select", "*.test", "", "", &o, 1, nil)
+   b.BormMock("tbl", "Select", "*.test", "", "", &o, 1, nil)
 
    // 调用被测试函数
    o1, n1, err := test(db)
@@ -333,42 +340,9 @@
    So(o1, ShouldResemble, o)
 
    // 检查是否全部命中
-   err = BormMockFinish()
+   err = b.BormMockFinish()
    So(err, ShouldBeNil)
 ```
-
-# 避免dot import lint
-
-使用推荐方案会遭遇golint告警信息如下
-```
-xxx.go(123): should not use dot imports (golint)
-```
-
-## 改进方案
-
-引入包时，使用比较短的import alias别名
-
-   ``` golang
-   import b "github.com/orca-zhang/borm"
-   ```
-
-使用时，带上短别名
-   ``` golang
-   t := b.Table(d.DB, "t_usr", ctx)
-   
-   var o struct {
-      ID   int64  `borm:"id"`
-      Name string `borm:"name"`
-      Tag  string `borm:"tag"`
-   }
-   
-   n, err := t.Select(&o, 
-      b.Where("name = ?", name), 
-      b.GroupBy("id"), 
-      b.Having(b.Gt("id", 0)), 
-      b.OrderBy("id", "name"), 
-      b.Limit(1))
-   ```
 
 # 待完成
 
@@ -378,3 +352,4 @@ xxx.go(123): should not use dot imports (golint)
 - Benchmark报告
 - 事务相关支持
 - 联合查询
+- 匿名组合问题
