@@ -2066,8 +2066,8 @@ func TestMisc(t *testing.T) {
 		So(limit.Type(), ShouldEqual, _limit)
 	})
 
-	Convey("ormCondEx - Type", t, func() {
-		condEx := &ormCondEx{Ty: _andCondEx}
+	Convey("BormCondEx - Type", t, func() {
+		condEx := &BormCondEx{Ty: _andCondEx}
 		So(condEx.Type(), ShouldEqual, _andCondEx)
 	})
 
