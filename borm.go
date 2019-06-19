@@ -760,7 +760,7 @@ func fieldEscape(sb *strings.Builder, field string) {
 	if field == "" {
 		return
 	}
-	if strings.IndexAny(field, "( `") == -1 {
+	if strings.IndexAny(field, "( `.") == -1 {
 		sb.WriteString("`")
 		sb.WriteString(field)
 		sb.WriteString("`")
