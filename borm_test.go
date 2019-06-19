@@ -1167,6 +1167,36 @@ func TestScanner(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(t.Unix(), ShouldEqual, time.Date(2019, 3, 1, 2, 3, 4, 0, time.UTC).Unix())
 		})
+
+		Convey("time.Time to format string", func() {
+			/* time */
+			t := time.Unix(1551405784, 0)
+
+			var s string
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(s),
+				Val:  unsafe.Pointer(&s),
+			}
+
+			err := stringScanner.Scan(t)
+			So(err, ShouldBeNil)
+			So(s, ShouldEqual, "2019-03-01 02:03:04")
+		})
+
+		Convey("time.Time to int64", func() {
+			/* time */
+			t := time.Unix(1551405784, 0)
+
+			var i int64
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := stringScanner.Scan(t)
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1551405784)
+		})
 	})
 
 	Convey("unknown type", t, func() {
@@ -2066,8 +2096,8 @@ func TestMisc(t *testing.T) {
 		So(limit.Type(), ShouldEqual, _limit)
 	})
 
-	Convey("BormCondEx - Type", t, func() {
-		condEx := &BormCondEx{Ty: _andCondEx}
+	Convey("ormCondEx - Type", t, func() {
+		condEx := &ormCondEx{Ty: _andCondEx}
 		So(condEx.Type(), ShouldEqual, _andCondEx)
 	})
 
