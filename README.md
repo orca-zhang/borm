@@ -236,6 +236,23 @@
    n, err := t.Select(&o, b.Where(b.Eq("t_usr.id", id))) // 条件加上表名
    ```
 
+-  获取插入的自增id
+   ``` golang
+   type Info struct {
+	   BormLastId int64
+      Name       string `borm:"name"`
+      Age        string `borm:"age"`
+   }
+
+   o := Info{
+      Name: "OrcaZ",
+      Age:  30,
+   }
+   n, err = t.Insert(&o)
+
+   id := o.BormLastId // 获取到插入的id
+   ```
+
 # 其他细节
 
 ### Table的选项
