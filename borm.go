@@ -173,7 +173,12 @@ func Limit(i ...interface{}) *limitItem {
 
 // OnDuplicateKeyUpdate .
 func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
-	return &onDuplicateKeyUpdateItem{KVs: keyVals}
+	res := &onDuplicateKeyUpdateItem{}
+	for k, v := range keyVals {
+		res.Keys = append(res.Keys, k)
+		res.Vals = append(res.Vals, v)
+	}
+	return res
 }
 
 func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
@@ -807,7 +812,8 @@ func (w *fieldsItem) BuildArgs(stmtArgs *[]interface{}) {
 }
 
 type onDuplicateKeyUpdateItem struct {
-	KVs V
+	Keys []string
+	Vals []interface{}
 }
 
 func (w *onDuplicateKeyUpdateItem) Type() int {
@@ -815,12 +821,12 @@ func (w *onDuplicateKeyUpdateItem) Type() int {
 }
 
 func (w *onDuplicateKeyUpdateItem) BuildSQL(sb *strings.Builder) {
-	if len(w.KVs) <= 0 {
+	if len(w.Keys) <= 0 {
 		return
 	}
 	sb.WriteString(" on duplicate key update ")
 	i := 0
-	for k := range w.KVs {
+	for _, k := range w.Keys {
 		if i > 0 {
 			sb.WriteString(",")
 		}
@@ -831,7 +837,7 @@ func (w *onDuplicateKeyUpdateItem) BuildSQL(sb *strings.Builder) {
 }
 
 func (w *onDuplicateKeyUpdateItem) BuildArgs(stmtArgs *[]interface{}) {
-	for _, v := range w.KVs {
+	for _, v := range w.Vals {
 		*stmtArgs = append(*stmtArgs, v)
 	}
 }
