@@ -267,7 +267,7 @@ func TestInsert(t *testing.T) {
 				X: "OrcaZ",
 				Y: 30,
 			}
-			tbl := Table(db, "test").Debug()
+			tbl := Table(db, "test2").Debug()
 
 			n, err := tbl.Insert(&o)
 
