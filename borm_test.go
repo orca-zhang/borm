@@ -39,6 +39,12 @@ type x struct {
 	Z3 int64     `borm:"ctime3"`
 }
 
+type xx struct {
+	BormLastId int64
+	X          string `borm:"name"`
+	Y          int64  `borm:"age"`
+}
+
 type x1 struct {
 	X     string `borm:"name"`
 	ctime int64
@@ -251,6 +257,23 @@ func TestInsert(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
+		})
+	})
+
+	Convey("get last insert id", t, func() {
+
+		Convey("single insert", func() {
+			o := xx{
+				X: "OrcaZ",
+				Y: 30,
+			}
+			tbl := Table(db, "test").Debug()
+
+			n, err := tbl.Insert(&o)
+
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+			So(o.BormLastId, ShouldBeGreaterThan, 0)
 		})
 	})
 }
