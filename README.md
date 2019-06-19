@@ -239,7 +239,7 @@
 -  获取插入的自增id
    ``` golang
    type Info struct {
-	   BormLastId int64
+      BormLastId int64
       Name       string `borm:"name"`
       Age        string `borm:"age"`
    }
