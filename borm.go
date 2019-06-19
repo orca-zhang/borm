@@ -107,7 +107,7 @@ func Where(conds ...interface{}) *whereItem {
 	if l := len(conds); l > 0 {
 		if s, ok := conds[0].(string); ok {
 			return &whereItem{Conds: []interface{}{
-				&BormCond{
+				&ormCond{
 					Op:   s,
 					Args: conds[1:l],
 				},
@@ -115,7 +115,7 @@ func Where(conds ...interface{}) *whereItem {
 		}
 		w := &whereItem{}
 		for _, c := range conds {
-			if condEx, ok := c.(*BormCondEx); ok {
+			if condEx, ok := c.(*ormCondEx); ok {
 				if len(condEx.Conds) <= 0 {
 					continue
 				}
@@ -137,7 +137,7 @@ func Having(conds ...interface{}) *havingItem {
 	if l := len(conds); l > 0 {
 		if s, ok := conds[0].(string); ok {
 			return &havingItem{Conds: []interface{}{
-				&BormCond{
+				&ormCond{
 					Op:   s,
 					Args: conds[1:l],
 				},
@@ -145,7 +145,7 @@ func Having(conds ...interface{}) *havingItem {
 		}
 		h := &havingItem{}
 		for _, c := range conds {
-			if condEx, ok := c.(*BormCondEx); ok {
+			if condEx, ok := c.(*ormCondEx); ok {
 				if len(condEx.Conds) <= 0 {
 					continue
 				}
@@ -853,10 +853,10 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 		if i > 0 {
 			sb.WriteString(" and ")
 		}
-		if cond, ok := c.(*BormCond); ok {
+		if cond, ok := c.(*ormCond); ok {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
-		} else if condEx, ok := c.(*BormCondEx); ok {
+		} else if condEx, ok := c.(*ormCondEx); ok {
 			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(w.Conds) > 1 {
 				sb.WriteString("(")
 			}
@@ -870,9 +870,9 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 
 func (w *whereItem) BuildArgs(stmtArgs *[]interface{}) {
 	for _, c := range w.Conds {
-		if cond, ok := c.(*BormCond); ok {
+		if cond, ok := c.(*ormCond); ok {
 			*stmtArgs = append(*stmtArgs, cond.Args...)
-		} else if condEx, ok := c.(*BormCondEx); ok {
+		} else if condEx, ok := c.(*ormCondEx); ok {
 			condEx.BuildArgs(stmtArgs)
 		}
 	}
@@ -917,10 +917,10 @@ func (h *havingItem) BuildSQL(sb *strings.Builder) {
 		if i > 0 {
 			sb.WriteString(" and ")
 		}
-		if cond, ok := c.(*BormCond); ok {
+		if cond, ok := c.(*ormCond); ok {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
-		} else if condEx, ok := c.(*BormCondEx); ok {
+		} else if condEx, ok := c.(*ormCondEx); ok {
 			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(h.Conds) > 1 {
 				sb.WriteString("(")
 			}
@@ -934,9 +934,9 @@ func (h *havingItem) BuildSQL(sb *strings.Builder) {
 
 func (h *havingItem) BuildArgs(stmtArgs *[]interface{}) {
 	for _, c := range h.Conds {
-		if cond, ok := c.(*BormCond); ok {
+		if cond, ok := c.(*ormCond); ok {
 			*stmtArgs = append(*stmtArgs, cond.Args...)
-		} else if condEx, ok := c.(*BormCondEx); ok {
+		} else if condEx, ok := c.(*ormCondEx); ok {
 			condEx.BuildArgs(stmtArgs)
 		}
 	}
@@ -1220,22 +1220,22 @@ func (dest *scanner) Scan(src interface{}) error {
 	return nil
 }
 
-type BormCond struct {
+type ormCond struct {
 	Field string
 	Op    string
 	Args  []interface{}
 }
 
-type BormCondEx struct {
+type ormCondEx struct {
 	Ty    int
 	Conds []interface{}
 }
 
-func (cx *BormCondEx) Type() int {
+func (cx *ormCondEx) Type() int {
 	return cx.Ty
 }
 
-func (cx *BormCondEx) BuildSQL(sb *strings.Builder) {
+func (cx *ormCondEx) BuildSQL(sb *strings.Builder) {
 	for i, c := range cx.Conds {
 		if i > 0 {
 			switch cx.Ty {
@@ -1245,10 +1245,10 @@ func (cx *BormCondEx) BuildSQL(sb *strings.Builder) {
 				sb.WriteString(" or ")
 			}
 		}
-		if cond, ok := c.(*BormCond); ok {
+		if cond, ok := c.(*ormCond); ok {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
-		} else if condEx, ok := c.(*BormCondEx); ok {
+		} else if condEx, ok := c.(*ormCondEx); ok {
 			if len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
 				sb.WriteString("(")
 			}
@@ -1260,11 +1260,11 @@ func (cx *BormCondEx) BuildSQL(sb *strings.Builder) {
 	}
 }
 
-func (cx *BormCondEx) BuildArgs(stmtArgs *[]interface{}) {
+func (cx *ormCondEx) BuildArgs(stmtArgs *[]interface{}) {
 	for _, c := range cx.Conds {
-		if cond, ok := c.(*BormCond); ok {
+		if cond, ok := c.(*ormCond); ok {
 			*stmtArgs = append(*stmtArgs, cond.Args...)
-		} else if condEx, ok := c.(*BormCondEx); ok {
+		} else if condEx, ok := c.(*ormCondEx); ok {
 			condEx.BuildArgs(stmtArgs)
 		}
 	}
@@ -1275,66 +1275,66 @@ func (cx *BormCondEx) BuildArgs(stmtArgs *[]interface{}) {
 */
 
 // And .
-func And(conds ...interface{}) *BormCondEx {
-	return &BormCondEx{Ty: _andCondEx, Conds: conds}
+func And(conds ...interface{}) *ormCondEx {
+	return &ormCondEx{Ty: _andCondEx, Conds: conds}
 }
 
 // Or .
-func Or(conds ...interface{}) *BormCondEx {
-	return &BormCondEx{Ty: _orCondEx, Conds: conds}
+func Or(conds ...interface{}) *ormCondEx {
+	return &ormCondEx{Ty: _orCondEx, Conds: conds}
 }
 
 // Cond .
-func Cond(c string, args ...interface{}) *BormCond {
-	return &BormCond{Op: c, Args: args}
+func Cond(c string, args ...interface{}) *ormCond {
+	return &ormCond{Op: c, Args: args}
 }
 
 // Eq .
-func Eq(field string, i interface{}) *BormCond {
-	return &BormCond{Field: field, Op: "=?", Args: []interface{}{i}}
+func Eq(field string, i interface{}) *ormCond {
+	return &ormCond{Field: field, Op: "=?", Args: []interface{}{i}}
 }
 
 // Neq .
-func Neq(field string, i interface{}) *BormCond {
-	return &BormCond{Field: field, Op: "<>?", Args: []interface{}{i}}
+func Neq(field string, i interface{}) *ormCond {
+	return &ormCond{Field: field, Op: "<>?", Args: []interface{}{i}}
 }
 
 // Gt .
-func Gt(field string, i interface{}) *BormCond {
-	return &BormCond{Field: field, Op: ">?", Args: []interface{}{i}}
+func Gt(field string, i interface{}) *ormCond {
+	return &ormCond{Field: field, Op: ">?", Args: []interface{}{i}}
 }
 
 // Gte .
-func Gte(field string, i interface{}) *BormCond {
-	return &BormCond{Field: field, Op: ">=?", Args: []interface{}{i}}
+func Gte(field string, i interface{}) *ormCond {
+	return &ormCond{Field: field, Op: ">=?", Args: []interface{}{i}}
 }
 
 // Lt .
-func Lt(field string, i interface{}) *BormCond {
-	return &BormCond{Field: field, Op: "<?", Args: []interface{}{i}}
+func Lt(field string, i interface{}) *ormCond {
+	return &ormCond{Field: field, Op: "<?", Args: []interface{}{i}}
 }
 
 // Lte .
-func Lte(field string, i interface{}) *BormCond {
-	return &BormCond{Field: field, Op: "<=?", Args: []interface{}{i}}
+func Lte(field string, i interface{}) *ormCond {
+	return &ormCond{Field: field, Op: "<=?", Args: []interface{}{i}}
 }
 
 // Between .
-func Between(field string, i interface{}, j interface{}) *BormCond {
-	return &BormCond{Field: field, Op: " between ? and ?", Args: []interface{}{i, j}}
+func Between(field string, i interface{}, j interface{}) *ormCond {
+	return &ormCond{Field: field, Op: " between ? and ?", Args: []interface{}{i, j}}
 }
 
 // Like .
-func Like(field string, pattern string) *BormCond {
-	return &BormCond{Field: field, Op: " like ?", Args: []interface{}{pattern}}
+func Like(field string, pattern string) *ormCond {
+	return &ormCond{Field: field, Op: " like ?", Args: []interface{}{pattern}}
 }
 
 // In .
-func In(field string, args ...interface{}) *BormCond {
+func In(field string, args ...interface{}) *ormCond {
 RETRY:
 	switch len(args) {
 	case 0:
-		return &BormCond{Op: "1=1"}
+		return &ormCond{Op: "1=1"}
 	case 1:
 		rt := reflect2.TypeOf(args[0])
 		// 如果第一个参数是数组，转化成interface数组
@@ -1362,7 +1362,7 @@ RETRY:
 		sb.WriteString("?")
 	}
 	sb.WriteString(")")
-	return &BormCond{Field: field, Op: sb.String(), Args: args}
+	return &ormCond{Field: field, Op: sb.String(), Args: args}
 }
 
 /*
