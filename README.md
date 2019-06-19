@@ -209,6 +209,33 @@
    n, err = t.Delete(b.Where(b.Eq("id", id)), b.Limit(1))
    ```
 
+- **可变条件**
+   ``` golang
+   conds := []interface{}{b.Cond("1=1")} // 防止空where条件
+   if name != "" {
+      conds = append(conds, b.Eq("name", name))
+   }
+   if id > 0 {
+      conds = append(conds, b.Eq("id", id))
+   }
+   // 执行查询操作
+   n, err := t.Select(&o, b.Where(conds...))
+   ```
+
+- **联表查询(临时)**
+   ``` golang
+   type Info struct {
+      ID   int64  `borm:"t_usr.id"` // 字段定义加表名
+      Name string `borm:"t_usr.name"`
+      Tag  string `borm:"t_tag.tag"`
+   }
+   
+   t := b.Table(d.DB, "t_usr join t_tag on t_usr.id=t_tag.id") // 表名用join语句
+
+   var o Info
+   n, err := t.Select(&o, b.Where(b.Eq("t_usr.id", id))) // 条件加上表名
+   ```
+
 # 其他细节
 
 ### Table的选项
