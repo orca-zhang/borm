@@ -238,8 +238,9 @@
 
 -  获取插入的自增id
    ``` golang
+   // 首先需要数据库有一个自增ID的字段
    type Info struct {
-      BormLastId int64
+      BormLastId int64 // 添加一个名为BormLastId的整型字段
       Name       string `borm:"name"`
       Age        string `borm:"age"`
    }
