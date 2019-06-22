@@ -13,7 +13,6 @@
 - 易用：SQL-Like（一把梭：One-Line-CRUD）
 - KISS：保持小而美（不做大而全）
 - 通用：支持struct，pb，map和基本类型
-   - slice用于表达批量，每个元素是row，而不是column
 - 可测：支持自mock（因为参数作返回值，大部分mock框架不支持）
     - 非测试向的library不是好library
 - As-Is：尽可能不作隐藏设定，防止误用
@@ -24,6 +23,11 @@
    - db操作无法方便的Mock
    - QueryRow的sql.ErrNoRows问题
    - 直接替换系统自带Scanner，完整接管数据读取的类型转换
+- 核心原则：
+   - 别像使用其他orm那样把一个表映射到一个model
+   - （在borm里可以用Fields过滤器做到）
+   - 尽量保持简单把一个操作映射一个model吧！
+- 从其他orm库迁移无需修改历史代码，无侵入性修改
 
 # 特性矩阵
 
@@ -71,7 +75,7 @@
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
-      <td>重构成本极小</td>
+      <td>borm重构成本极小</td>
    </tr>
    <tr>
       <td>全类型转换</td>
@@ -93,7 +97,7 @@
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
-      <td>非常便于单元测试</td>
+      <td>borm非常便于单元测试</td>
    </tr>
    <tr>
       <td rowspan="2">性能</td>
@@ -175,7 +179,7 @@
       b.OrderBy("id", "name"), 
       b.Limit(1))
 
-   // 使用基本类型获取条目数（n的值为1，因为结果只有1条）
+   // 使用基本类型+Fields获取条目数（n的值为1，因为结果只有1条）
    var cnt int64
    n, err = t.Select(&cnt, b.Fields("count(1)"), b.Where("name = ?", name))
    ```
@@ -252,6 +256,17 @@
    n, err = t.Insert(&o)
 
    id := o.BormLastId // 获取到插入的id
+   ```
+   
+- 正在使用其他orm框架（新的接口先切过来吧）
+   ``` golang
+   // db是一个*gorm.DB
+   t := b.Table(d.DB(), "tbl")
+
+   // db是一个*xorm.EngineGroup
+   t := b.Table(d.Master().DB().DB, "tbl")
+   // or
+   t := b.Table(d.Slave().DB().DB, "tbl")
    ```
 
 # 其他细节
@@ -398,3 +413,5 @@
 - 事务相关支持
 - 联合查询
 - 匿名组合问题
+- 连接池
+- 读写分离
