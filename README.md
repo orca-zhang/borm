@@ -77,7 +77,7 @@
       <td>全类型转换</td>
       <td>:white_check_mark:</td>
       <td>maybe</td>
-      <td>maybe</td>
+      <td>:x:</td>
       <td>杜绝类型转换的抛错</td>
    </tr>
    <tr>
