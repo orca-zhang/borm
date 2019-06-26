@@ -267,9 +267,9 @@
    t := b.Table(d.DB(), "tbl")
 
    // db是一个*xorm.EngineGroup
-   t := b.Table(d.Master().DB().DB, "tbl")
+   t := b.Table(db.Master().DB().DB, "tbl")
    // or
-   t := b.Table(d.Slave().DB().DB, "tbl")
+   t := b.Table(db.Slave().DB().DB, "tbl")
    ```
 
 # 其他细节
