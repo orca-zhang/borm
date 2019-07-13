@@ -1147,16 +1147,19 @@ func (dest *scanner) Scan(src interface{}) error {
 	var (
 		st = reflect2.TypeOf(src)
 		dt = dest.Type
-		sk = st.Kind()
-		dk = dt.Kind()
 	)
 
 	// NULL值
-	if st.UnsafeIsNil(reflect2.PtrOf(src)) {
+	if src == nil || st.UnsafeIsNil(reflect2.PtrOf(src)) {
 		// 设置成默认值，如果是指针，那么是空指针
 		dt.UnsafeSet(dest.Val, dt.UnsafeNew())
 		return nil
 	}
+
+	var (
+		sk = st.Kind()
+		dk = dt.Kind()
+	)
 
 	// 相同类型，直接赋值
 	if dk == sk {
