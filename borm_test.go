@@ -438,7 +438,7 @@ func TestScanner(t *testing.T) {
 
 			err := bytesScanner.Scan(nil)
 			So(err, ShouldBeNil)
-			So(bs, ShouldResemble, []byte{})
+			So(bs, ShouldResemble, []byte(nil))
 		})
 
 		Convey("nil to time.Time", func() {
@@ -451,7 +451,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(nil)
 			So(err, ShouldBeNil)
-			So(t.Unix(), ShouldEqual, new(time.Time))
+			So(t, ShouldEqual, new(time.Time))
 		})
 	})
 
