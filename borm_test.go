@@ -443,15 +443,16 @@ func TestScanner(t *testing.T) {
 
 		Convey("nil to time.Time", func() {
 			/* time */
-			var t time.Time
+			t := time.Now()
 			stringScanner := scanner{
 				Type: reflect2.TypeOf(t),
 				Val:  unsafe.Pointer(&t),
 			}
+			var emptyTime time.Time
 
 			err := stringScanner.Scan(nil)
 			So(err, ShouldBeNil)
-			So(t, ShouldEqual, new(time.Time))
+			So(t, ShouldEqual, emptyTime)
 		})
 	})
 
