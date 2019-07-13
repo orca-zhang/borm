@@ -388,6 +388,71 @@ func TestScanner(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(ptr, ShouldEqual, nil)
 		})
+
+		Convey("nil to bool", func() {
+			/* bool */
+			b := true
+			boolScanner := scanner{
+				Type: reflect2.TypeOf(b),
+				Val:  unsafe.Pointer(&b),
+			}
+
+			err := boolScanner.Scan(nil)
+			So(err, ShouldBeNil)
+			So(b, ShouldEqual, false)
+		})
+
+		Convey("nil to int64", func() {
+			/* int64 */
+			i := int64(1)
+			int64Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := int64Scanner.Scan(nil)
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 0)
+		})
+
+		Convey("nil to string", func() {
+			/* string */
+			s := "xxxx"
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(s),
+				Val:  unsafe.Pointer(&s),
+			}
+
+			err := stringScanner.Scan(nil)
+			So(err, ShouldBeNil)
+			So(s, ShouldEqual, "")
+		})
+
+		Convey("nil to []byte", func() {
+			/* []byte */
+			bs := []byte{byte(1)}
+			bytesScanner := scanner{
+				Type: reflect2.TypeOf(bs),
+				Val:  unsafe.Pointer(&bs),
+			}
+
+			err := bytesScanner.Scan(nil)
+			So(err, ShouldBeNil)
+			So(bs, ShouldResemble, []byte{})
+		})
+
+		Convey("nil to time.Time", func() {
+			/* time */
+			var t time.Time
+			stringScanner := scanner{
+				Type: reflect2.TypeOf(t),
+				Val:  unsafe.Pointer(&t),
+			}
+
+			err := stringScanner.Scan(nil)
+			So(err, ShouldBeNil)
+			So(t.Unix(), ShouldEqual, new(time.Time))
+		})
 	})
 
 	Convey("bool", t, func() {
@@ -645,6 +710,7 @@ func TestScanner(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(bs, ShouldResemble, []byte("false"))
 		})
+
 		Convey("bool to []byte", func() {
 			/* []byte */
 			var bs []byte
