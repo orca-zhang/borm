@@ -1223,8 +1223,7 @@ func (dest *scanner) Scan(src interface{}) error {
 			*(*[]byte)(dest.Val) = reflect2.UnsafeCastString(numberToString(sk, src))
 			return nil
 		}
-		// TODO 自定义类型，尝试转换
-		return fmt.Errorf("converting driver.Value type %T to a %s", src, dest.Type.String())
+		return scanFromString(isTime, st, dt, dest.Val, fmt.Sprint(src))
 	}
 	return nil
 }

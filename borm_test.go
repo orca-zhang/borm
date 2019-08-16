@@ -564,6 +564,270 @@ func TestScanner(t *testing.T) {
 		})
 	})
 
+	Convey("integer", t, func() {
+		Convey("int64 to int", func() {
+			/* int */
+			i := int(0)
+			intScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := intScanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to uint", func() {
+			/* uint */
+			i := uint(0)
+			uintScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uintScanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to int8", func() {
+			/* int8 */
+			i := int8(0)
+			int8Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := int8Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to uint8", func() {
+			/* uint8 */
+			i := uint8(0)
+			uint8Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uint8Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to int16", func() {
+			/* int16 */
+			i := int16(0)
+			int16Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := int16Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to uint16", func() {
+			/* uint16 */
+			i := uint16(0)
+			uint16Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uint16Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to int32", func() {
+			/* int32 */
+			i := int32(0)
+			int32Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := int32Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to uint32", func() {
+			/* uint32 */
+			i := uint32(0)
+			uint32Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uint32Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to uint64", func() {
+			/* uint64 */
+			i := uint64(0)
+			uint64Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uint64Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to float32", func() {
+			/* float32 */
+			i := float32(0)
+			float32Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := float32Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("int64 to float64", func() {
+			/* float64 */
+			i := float64(0)
+			float64Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := float64Scanner.Scan(int64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+	})
+
+	Convey("floating", t, func() {
+		Convey("float to int", func() {
+			/* int */
+			i := int(0)
+			intScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := intScanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("float to uint", func() {
+			/* uint */
+			i := uint(0)
+			uintScanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uintScanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("float to int8", func() {
+			/* int8 */
+			i := int8(0)
+			int8Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := int8Scanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("float to uint8", func() {
+			/* uint8 */
+			i := uint8(0)
+			uint8Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uint8Scanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("float to int16", func() {
+			/* int16 */
+			i := int16(0)
+			int16Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := int16Scanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("float to uint16", func() {
+			/* uint16 */
+			i := uint16(0)
+			uint16Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uint16Scanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("float to int32", func() {
+			/* int32 */
+			i := int32(0)
+			int32Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := int32Scanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("float to uint32", func() {
+			/* uint32 */
+			i := uint32(0)
+			uint32Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uint32Scanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+
+		Convey("float to uint64", func() {
+			/* uint64 */
+			i := uint64(0)
+			uint64Scanner := scanner{
+				Type: reflect2.TypeOf(i),
+				Val:  unsafe.Pointer(&i),
+			}
+
+			err := uint64Scanner.Scan(float64(1))
+			So(err, ShouldBeNil)
+			So(i, ShouldEqual, 1)
+		})
+	})
+
 	Convey("float64", t, func() {
 		Convey("bool to float64", func() {
 			/* float64 */
