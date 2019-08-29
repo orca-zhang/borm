@@ -169,7 +169,7 @@
    n, err = t.Insert(&o, b.Fields("name", "tag"),
       b.OnDuplicateKeyUpdate(b.V{
          "name": "new_name",
-         "age": b.U("age+1"),
+         "age":  b.U("age+1"), // 使用b.U来处理非变量更新
       }))
    ```
 
@@ -197,7 +197,7 @@
    n, err = t.Update(b.V{
          "name": "new_name",
          "tag":  "tag1,tag2,tag3",
-         "age":  b.U("age+1"),
+         "age":  b.U("age+1"), // 使用b.U来处理非变量更新
       }, b.Where(b.Eq("id", id)), b.Limit(1))
 
    // 使用map更新部分字段
@@ -265,10 +265,10 @@
    
 - 正在使用其他orm框架（新的接口先切过来吧）
    ``` golang
-   // db是一个*gorm.DB
-   t := b.Table(d.DB(), "tbl")
+   // [gorm] db是一个*gorm.DB
+   t := b.Table(db.DB(), "tbl")
 
-   // db是一个*xorm.EngineGroup
+   // [xorm] db是一个*xorm.EngineGroup
    t := b.Table(db.Master().DB().DB, "tbl")
    // or
    t := b.Table(db.Slave().DB().DB, "tbl")
