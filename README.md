@@ -169,6 +169,7 @@
    n, err = t.Insert(&o, b.Fields("name", "tag"),
       b.OnDuplicateKeyUpdate(b.V{
          "name": "new_name",
+         "age": b.U("age+1"),
       }))
    ```
 
@@ -195,13 +196,14 @@
    // 使用map更新
    n, err = t.Update(b.V{
          "name": "new_name",
-         "tag":  "tag,tag,tag",
+         "tag":  "tag1,tag2,tag3",
+         "age":  b.U("age+1"),
       }, b.Where(b.Eq("id", id)), b.Limit(1))
 
    // 使用map更新部分字段
    n, err = t.Update(b.V{
          "name": "new_name",
-         "tag":  "tag,tag,tag",
+         "tag":  "tag1,tag2,tag3",
       }, b.Fields("name"), b.Where(b.Eq("id", id)), b.Limit(1))
 
    n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)), b.Limit(1))
