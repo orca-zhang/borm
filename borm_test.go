@@ -258,6 +258,23 @@ func TestInsert(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 		})
+
+		Convey("on duplicate key update with U", func() {
+			o := x{
+				X:  "Orca1",
+				Y:  20,
+				Z1: 1551405784,
+			}
+			tbl := Table(db, "test").Debug()
+
+			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnDuplicateKeyUpdate(V{
+				"name": "OnDuplicateKeyUpdate",
+				"age":  U("age+1"),
+			}))
+
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+		})
 	})
 
 	Convey("get last insert id", t, func() {
@@ -308,6 +325,17 @@ func TestUpdate(t *testing.T) {
 			So(n, ShouldBeGreaterThan, 0)
 		})
 
+		Convey("update with U", func() {
+			tbl := Table(db, "test").Debug()
+
+			n, err := tbl.Update(V{
+				"age": U("age+1"),
+			}, Where("id = ?", 0))
+
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThan, 0)
+		})
+
 		Convey("update with map & Fields", func() {
 			tbl := Table(db, "test").Debug()
 
@@ -315,6 +343,18 @@ func TestUpdate(t *testing.T) {
 				"name": "OrcaUpdatedFields",
 				"age":  88,
 			}, Fields("name", "age"), Where("id = ?", 0))
+
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThan, 0)
+		})
+
+		Convey("update with U & Fields", func() {
+			tbl := Table(db, "test").Debug()
+
+			n, err := tbl.Update(V{
+				"name": "OrcaUpdatedFields",
+				"age":  U("age+1"),
+			}, Fields("age"), Where("id = ?", 0))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
