@@ -51,6 +51,9 @@ var config struct {
 // V - an alias object value type
 type V map[string]interface{}
 
+// U - an alias string type for update to support `x=x+1`
+type U string
+
 // Config .
 type Config struct {
 	Debug               bool
@@ -174,10 +177,28 @@ func Limit(i ...interface{}) *limitItem {
 // OnDuplicateKeyUpdate .
 func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 	res := &onDuplicateKeyUpdateItem{}
-	for k, v := range keyVals {
-		res.Keys = append(res.Keys, k)
-		res.Vals = append(res.Vals, v)
+	if len(keyVals) <= 0 {
+		return res
 	}
+
+	var sb strings.Builder
+	sb.WriteString(" on duplicate key update ")
+	i := 0
+	for k, v := range keyVals {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		fieldEscape(&sb, k)
+		if s, ok := v.(U); ok {
+			sb.WriteString("=")
+			sb.WriteString(string(s))
+		} else {
+			sb.WriteString("=?")
+			res.Vals = append(res.Vals, v)
+		}
+		i++
+	}
+	res.Conds = sb.String()
 	return res
 }
 
@@ -582,8 +603,13 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 						sb.WriteString(",")
 					}
 					fieldEscape(&sb, field)
-					sb.WriteString("=?")
-					stmtArgs = append(stmtArgs, v)
+					if s, ok := v.(U); ok {
+						sb.WriteString("=")
+						sb.WriteString(string(s))
+					} else {
+						sb.WriteString("=?")
+						stmtArgs = append(stmtArgs, v)
+					}
 				}
 			}
 
@@ -595,8 +621,13 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 					sb.WriteString(",")
 				}
 				fieldEscape(&sb, k)
-				sb.WriteString("=?")
-				stmtArgs = append(stmtArgs, v)
+				if s, ok := v.(U); ok {
+					sb.WriteString("=")
+					sb.WriteString(string(s))
+				} else {
+					sb.WriteString("=?")
+					stmtArgs = append(stmtArgs, v)
+				}
 			}
 		}
 	} else {
@@ -812,8 +843,8 @@ func (w *fieldsItem) BuildArgs(stmtArgs *[]interface{}) {
 }
 
 type onDuplicateKeyUpdateItem struct {
-	Keys []string
-	Vals []interface{}
+	Conds string
+	Vals  []interface{}
 }
 
 func (w *onDuplicateKeyUpdateItem) Type() int {
@@ -821,25 +852,11 @@ func (w *onDuplicateKeyUpdateItem) Type() int {
 }
 
 func (w *onDuplicateKeyUpdateItem) BuildSQL(sb *strings.Builder) {
-	if len(w.Keys) <= 0 {
-		return
-	}
-	sb.WriteString(" on duplicate key update ")
-	i := 0
-	for _, k := range w.Keys {
-		if i > 0 {
-			sb.WriteString(",")
-		}
-		fieldEscape(sb, k)
-		sb.WriteString("=?")
-		i++
-	}
+	sb.WriteString(w.Conds)
 }
 
 func (w *onDuplicateKeyUpdateItem) BuildArgs(stmtArgs *[]interface{}) {
-	for _, v := range w.Vals {
-		*stmtArgs = append(*stmtArgs, v)
-	}
+	*stmtArgs = append(*stmtArgs, w.Vals...)
 }
 
 type whereItem struct {
