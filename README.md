@@ -186,6 +186,10 @@
    // 使用基本类型+Fields获取条目数（n的值为1，因为结果只有1条）
    var cnt int64
    n, err = t.Select(&cnt, b.Fields("count(1)"), b.Where("name = ?", name))
+
+   // 还可以支持数组
+   var ids []int64
+   n, err = t.Select(&ids, b.Fields("id"), b.Where("name = ?", name))
    ```
 
 - 更新
