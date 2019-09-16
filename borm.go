@@ -272,14 +272,15 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 		var sb strings.Builder
 		sb.WriteString("select ")
 
+		if isArray {
+			item.Elem = rtElem.New()
+		} else {
+			item.Elem = res
+		}
+
 		// struct类型
 		if rtElem.Kind() == reflect.Struct {
 			s := rtElem.(reflect2.StructType)
-			if isArray {
-				item.Elem = rtElem.New()
-			} else {
-				item.Elem = res
-			}
 
 			if args[0].Type() == _fields {
 				m := t.getStructFieldMap(s)
@@ -333,12 +334,6 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			fi := args[0].(*fieldsItem)
 			if len(fi.Fields) < 1 {
 				return 0, errors.New("too few fields")
-			}
-
-			if isArray {
-				item.Elem = rtElem.New()
-			} else {
-				item.Elem = res
 			}
 
 			item.Cols = append(item.Cols, &scanner{
