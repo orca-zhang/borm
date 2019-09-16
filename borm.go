@@ -337,7 +337,7 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 
 			item.Cols = append(item.Cols, &scanner{
 				Type: rtElem,
-				Val:  reflect2.PtrOf(res),
+				Val:  reflect2.PtrOf(item.Elem),
 			})
 
 			fieldEscape(&sb, fi.Fields[0])
