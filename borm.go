@@ -335,6 +335,12 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 				return 0, errors.New("too few fields")
 			}
 
+			if isArray {
+				item.Elem = rtElem.New()
+			} else {
+				item.Elem = res
+			}
+
 			item.Cols = append(item.Cols, &scanner{
 				Type: rtElem,
 				Val:  reflect2.PtrOf(item.Elem),
