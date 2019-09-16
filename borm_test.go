@@ -158,6 +158,17 @@ func TestSelect(t *testing.T) {
 			So(n, ShouldEqual, 1)
 			So(n, ShouldBeGreaterThan, 0)
 		})
+
+		Convey("user-defined fields with simple slice type", func() {
+			var ids []int64
+			tbl := Table(db, "test").Debug()
+
+			n, err := tbl.Select(&ids, Fields("id"), Limit(100))
+
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThan, 1)
+			So(len(ids), ShouldBeGreaterThan, 1)
+		})
 	})
 }
 
