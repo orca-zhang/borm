@@ -190,6 +190,9 @@
    // 还可以支持数组
    var ids []int64
    n, err = t.Select(&ids, b.Fields("id"), b.Where("name = ?", name))
+
+   // 可以强制索引
+   n, err = t.Select(&ids, b.Fields("id"), b.ForceIndex("idx_xxx"), b.Where("name = ?", name))
    ```
 
 - 更新
@@ -353,6 +356,12 @@
 |示例|说明|
 |-|-|
 |OnDuplicateKeyUpdate(V{"name": "new"})|解决主键冲突的更新|
+
+### ForceIndex
+
+|示例|说明|
+|-|-|
+|ForceIndex("idx_biz_id")|解决索引选择性差的问题|
 
 # 如何mock
 
