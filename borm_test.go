@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"testing"
-
-	"fmt"
-	"log"
 	"time"
 	"unsafe"
 
@@ -24,6 +23,7 @@ var (
 
 func init() {
 	var err error
+	// db, err = sql.Open("mysql", "root:@tcp(localhost:3306)/borm_test?charset=utf8mb4")
 	db, err = sql.Open("mysql", "root:semaphoredb@tcp(localhost:3306)/borm_test?charset=utf8mb4")
 	if err != nil {
 		log.Fatal(err)
@@ -81,6 +81,19 @@ func BenchmarkNormalSelect(b *testing.B) {
 
 		rows.Close()
 	}
+}
+
+func TestForceIndex(t *testing.T) {
+	Convey("normal", t, func() {
+		var ids []int64
+		tbl := Table(db, "test").Debug()
+
+		n, err := tbl.Select(&ids, Fields("id"), ForceIndex("idx_u_biz_id_update"), Limit(100))
+
+		So(err, ShouldBeNil)
+		So(n, ShouldBeGreaterThan, 1)
+		So(len(ids), ShouldBeGreaterThan, 1)
+	})
 }
 
 func TestSelect(t *testing.T) {

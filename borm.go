@@ -35,6 +35,7 @@ const (
 	_orderBy
 	_limit
 	_onDuplicateKeyUpdate
+	_forceIndex
 
 	_andCondEx = iota
 	_orCondEx
@@ -202,6 +203,11 @@ func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 	return res
 }
 
+// ForceIndex
+func ForceIndex(idx string) *forceIndexItem {
+	return &forceIndexItem{idx: idx}
+}
+
 func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 	if len(args) <= 0 {
 		return 0, errors.New("argument 3 cannot be omitted")
@@ -230,8 +236,8 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 				isPtrArray = true
 			}
 		}
-	// case reflect.Map:
-	// TODO
+		// case reflect.Map:
+		// TODO
 	default:
 		return 0, errors.New("argument 2 should be map or ptr")
 	}
@@ -858,6 +864,22 @@ func (w *onDuplicateKeyUpdateItem) BuildSQL(sb *strings.Builder) {
 
 func (w *onDuplicateKeyUpdateItem) BuildArgs(stmtArgs *[]interface{}) {
 	*stmtArgs = append(*stmtArgs, w.Vals...)
+}
+
+type forceIndexItem struct {
+	idx string
+}
+
+func (w *forceIndexItem) Type() int {
+	return _forceIndex
+}
+
+func (w *forceIndexItem) BuildSQL(sb *strings.Builder) {
+	sb.WriteString(" force index(" + w.idx + ")")
+}
+
+func (w *forceIndexItem) BuildArgs(stmtArgs *[]interface{}) {
+	return
 }
 
 type whereItem struct {
