@@ -184,9 +184,9 @@ func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 
 	var sb strings.Builder
 	sb.WriteString(" on duplicate key update ")
-	i := 0
+	argCnt := 0
 	for k, v := range keyVals {
-		if i > 0 {
+		if argCnt > 0 {
 			sb.WriteString(",")
 		}
 		fieldEscape(&sb, k)
@@ -196,8 +196,8 @@ func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 		} else {
 			sb.WriteString("=?")
 			res.Vals = append(res.Vals, v)
+			argCnt++
 		}
-		i++
 	}
 	res.Conds = sb.String()
 	return res
@@ -603,10 +603,11 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 
 	if m, ok := obj.(V); ok {
 		if args[0].Type() == _fields {
+			argCnt := 0
 			for _, field := range args[0].(*fieldsItem).Fields {
 				v := m[field]
 				if v != nil {
-					if len(stmtArgs) > 0 {
+					if argCnt > 0 {
 						sb.WriteString(",")
 					}
 					fieldEscape(&sb, field)
@@ -616,6 +617,7 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 					} else {
 						sb.WriteString("=?")
 						stmtArgs = append(stmtArgs, v)
+						argCnt++
 					}
 				}
 			}
@@ -623,8 +625,9 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 			args = args[1:]
 
 		} else {
+			argCnt := 0
 			for k, v := range m {
-				if len(stmtArgs) > 0 {
+				if argCnt > 0 {
 					sb.WriteString(",")
 				}
 				fieldEscape(&sb, k)
@@ -634,6 +637,7 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 				} else {
 					sb.WriteString("=?")
 					stmtArgs = append(stmtArgs, v)
+					argCnt++
 				}
 			}
 		}
