@@ -85,6 +85,8 @@ func BenchmarkNormalSelect(b *testing.B) {
 
 func TestForceIndex(t *testing.T) {
 	Convey("normal", t, func() {
+		So(ForceIndex("idx_ctime").Type(), ShouldEqual, _forceIndex)
+
 		var ids []int64
 		tbl := Table(db, "test").Debug()
 
