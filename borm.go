@@ -210,7 +210,7 @@ func ForceIndex(idx string) *forceIndexItem {
 
 func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 	if len(args) <= 0 {
-		return 0, errors.New("argument 3 cannot be omitted")
+		return 0, errors.New("argument 2 cannot be omitted")
 	}
 
 	var (
@@ -572,8 +572,8 @@ func (t *BormTable) insert(prefix string, objs interface{}, args []BormItem) (in
 	}
 
 	if !isArray {
-		id, _ := res.LastInsertId()
 		if f := s.FieldByName("BormLastId"); f != nil {
+			id, _ := res.LastInsertId()
 			f.UnsafeSet(reflect2.PtrOf(objs), reflect2.PtrOf(id))
 		}
 	}
@@ -591,7 +591,7 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 	}
 
 	if len(args) <= 0 {
-		return 0, errors.New("argument 3 cannot be omitted")
+		return 0, errors.New("argument 2 cannot be omitted")
 	}
 
 	var sb strings.Builder
