@@ -196,8 +196,8 @@ func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 		} else {
 			sb.WriteString("=?")
 			res.Vals = append(res.Vals, v)
-			argCnt++
 		}
+		argCnt++
 	}
 	res.Conds = sb.String()
 	return res
