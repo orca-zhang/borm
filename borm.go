@@ -617,8 +617,8 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 					} else {
 						sb.WriteString("=?")
 						stmtArgs = append(stmtArgs, v)
-						argCnt++
 					}
+					argCnt++
 				}
 			}
 
