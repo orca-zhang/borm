@@ -2239,8 +2239,8 @@ func TestMisc(t *testing.T) {
 		})
 	})
 
-	Convey("Embeded And and Or", t, func() {
-		Convey("Embeded And with Or", func() {
+	Convey("Embedded And and Or", t, func() {
+		Convey("Embedded And with Or", func() {
 			w := Or(Eq("id1", 0),
 				And(Eq("id2", 0),
 					Eq("id3", 0),
