@@ -837,7 +837,7 @@ func (t *BormTable) getStructFieldMap(s reflect2.StructType) map[string]reflect2
 	return m
 }
 
-// BormItem . 
+// BormItem .
 type BormItem interface {
 	Type() int
 	BuildSQL(*strings.Builder)
