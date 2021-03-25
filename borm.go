@@ -91,11 +91,13 @@ func (t *BormTable) Debug() *BormTable {
 	return t
 }
 
+// UseNameWhenTagEmpty .
 func (t *BormTable) UseNameWhenTagEmpty() *BormTable {
 	t.Cfg.UseNameWhenTagEmpty = true
 	return t
 }
 
+// ToTimestamp .
 func (t *BormTable) ToTimestamp() *BormTable {
 	t.Cfg.ToTimestamp = true
 	return t
@@ -203,11 +205,12 @@ func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 	return res
 }
 
-// ForceIndex
+// ForceIndex .
 func ForceIndex(idx string) *forceIndexItem {
 	return &forceIndexItem{idx: idx}
 }
 
+// Select .
 func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 	if len(args) <= 0 {
 		return 0, errors.New("argument 2 cannot be omitted")
@@ -410,6 +413,7 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 	return count, err
 }
 
+// InsertIgnore .
 func (t *BormTable) InsertIgnore(objs interface{}, args ...BormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
@@ -421,6 +425,7 @@ func (t *BormTable) InsertIgnore(objs interface{}, args ...BormItem) (int, error
 	return t.insert("insert ignore into ", objs, args)
 }
 
+// ReplaceInto .
 func (t *BormTable) ReplaceInto(objs interface{}, args ...BormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
@@ -432,6 +437,7 @@ func (t *BormTable) ReplaceInto(objs interface{}, args ...BormItem) (int, error)
 	return t.insert("replace into ", objs, args)
 }
 
+// Insert .
 func (t *BormTable) Insert(objs interface{}, args ...BormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
@@ -582,6 +588,7 @@ func (t *BormTable) insert(prefix string, objs interface{}, args []BormItem) (in
 	return int(row), nil
 }
 
+// Update .
 func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 	if config.Mock {
 		pc, fileName, _, _ := runtime.Caller(1)
@@ -727,6 +734,7 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 	return int(row), nil
 }
 
+// Delete .
 func (t *BormTable) Delete(args ...BormItem) (int, error) {
 	if len(args) <= 0 {
 		return 0, errors.New("argument 1 cannot be omitted")
@@ -785,12 +793,14 @@ func (t *BormTable) inputArgs(stmtArgs *[]interface{}, cols []reflect2.StructFie
 	}
 }
 
+// BormDBIFace .
 type BormDBIFace interface {
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
 
+// BormTable .
 type BormTable struct {
 	DB   BormDBIFace
 	Name string
@@ -827,6 +837,7 @@ func (t *BormTable) getStructFieldMap(s reflect2.StructType) map[string]reflect2
 	return m
 }
 
+// BormItem . 
 type BormItem interface {
 	Type() int
 	BuildSQL(*strings.Builder)
