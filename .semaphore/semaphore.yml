@@ -10,13 +10,14 @@ blocks:
       jobs:
         - name: go test
           commands:
+            - sem-service start mysql --username=root --password=semaphoredb
             - sem-version go 1.13
             - export GOPATH=~/go
             - 'export PATH=/home/semaphore/go/bin:$PATH'
             - checkout
             - go get -t -d -v ./... && go build -v ./...
             - >-
-              mysql -u $DATABASE_MYSQL_USERNAME -p$DATABASE_MYSQL_PASSWORD -e "CREATE DATABASE IF NOT EXISTS borm_test;USE borm_test;CREATE TABLE test (id int(11) NOT NULL, name varchar(255) NOT NULL, age int(11) NOT NULL, ctime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP, ctime2 datetime NOT NULL, ctime3 date NOT NULL, ctime4 bigint(20) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01
+              mysql -u root -psemaphoredb -e "CREATE DATABASE IF NOT EXISTS borm_test;USE borm_test;CREATE TABLE test (id int(11) NOT NULL, name varchar(255) NOT NULL, age int(11) NOT NULL, ctime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP, ctime2 datetime NOT NULL, ctime3 date NOT NULL, ctime4 bigint(20) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01
               16:28:26','2019-03-01',1551428928),(2,'zhangwei',28,'2019-03-01 09:21:20','0000-00-00 00:00:00','0000-00-00',0);CREATE TABLE test2 (id int(11) NOT NULL AUTO_INCREMENT, name varchar(255) NOT NULL, age int(11) NOT NULL, PRIMARY KEY(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;create index idx_ctime on test (ctime);"
             - go test -coverprofile=coverage.txt -covermode=atomic -v ./...
             - 'bash <(curl -s https://codecov.io/bash) -t 810f60e0-e3e0-45ac-ae03-250112080ee7 || echo "Codecov did not collect coverage reports"'
