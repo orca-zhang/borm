@@ -12,7 +12,7 @@
 # 目标
 - 易用：SQL-Like（一把梭：One-Line-CRUD）
 - KISS：保持小而美（不做大而全）
-- 通用：支持struct，pb，map和基本类型
+- 通用：支持struct，pb和基本类型
 - 可测：支持自mock（因为参数作返回值，大部分mock框架不支持）
     - 非测试向的library不是好library
 - As-Is：尽可能不作隐藏设定，防止误用
@@ -167,7 +167,7 @@
 
    // 解决主键冲突
    n, err = t.Insert(&o, b.Fields("name", "tag"),
-      b.OnDuplicateKeyUpdate(b.V{
+      b.OnConflictDoUpdateSet([]string{"name"}, b.V{
          "name": "new_name",
          "age":  b.U("age+1"), // 使用b.U来处理非变量更新
       }))
@@ -192,7 +192,7 @@
    n, err = t.Select(&ids, b.Fields("id"), b.Where("name = ?", name))
 
    // 可以强制索引
-   n, err = t.Select(&ids, b.Fields("id"), b.ForceIndex("idx_xxx"), b.Where("name = ?", name))
+   n, err = t.Select(&ids, b.Fields("id"), b.IndexedBy("idx_xxx"), b.Where("name = ?", name))
    ```
 
 - 更新
@@ -238,7 +238,7 @@
    n, err := t.Select(&o, b.Where(conds...))
    ```
 
-- **联表查询(临时)**
+- **联表查询**
    ``` golang
    type Info struct {
       ID   int64  `borm:"t_usr.id"` // 字段定义加表名
@@ -246,10 +246,14 @@
       Tag  string `borm:"t_tag.tag"`
    }
    
+   // 方法一
    t := b.Table(d.DB, "t_usr join t_tag on t_usr.id=t_tag.id") // 表名用join语句
-
    var o Info
    n, err := t.Select(&o, b.Where(b.Eq("t_usr.id", id))) // 条件加上表名
+
+   // 方法二
+   t = b.Table(d.DB, "t_usr") // 正常表名
+   n, err = t.Select(&o, b.Join("join t_tag on t_usr.id=t_tag.id"), b.Where(b.Eq("t_usr.id", id))) // 条件需要加上表名
    ```
 
 -  获取插入的自增id
@@ -322,6 +326,7 @@
 |小于等于|Lte("id", id)|两个参数，id<=?|
 |在...之间|Between("id", start, end)|三个参数，在start和end之间|
 |近似|Like("name", "x%")|两个参数，name like "x%"|
+|近似|GLOB("name", "?x*")|两个参数，name glob "?x*"|
 |多值选择|In("id", ids)|两个参数，ids是基础类型的slice，slice只有1个元素会转化成Eq|
 
 ### GroupBy
@@ -351,17 +356,17 @@
 |Limit(1)|分页大小为1|
 |Limit(0, 100)|偏移位置为0，分页大小为100|
 
-### OnDuplicateKeyUpdate
+### OnConflictDoUpdateSet
 
 |示例|说明|
 |-|-|
-|OnDuplicateKeyUpdate(V{"name": "new"})|解决主键冲突的更新|
+|OnConflictDoUpdateSet([]string{"name"}, V{"name": "new"})|解决主键冲突的更新|
 
-### ForceIndex
+### IndexedBy
 
 |示例|说明|
 |-|-|
-|ForceIndex("idx_biz_id")|解决索引选择性差的问题|
+|IndexedBy("idx_biz_id")|解决索引选择性差的问题|
 
 # 如何mock
 
