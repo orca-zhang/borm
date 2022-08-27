@@ -12,7 +12,7 @@ import (
 	"time"
 	"unsafe"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/modern-go/reflect2"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -23,11 +23,11 @@ var (
 
 func init() {
 	var err error
-	// db, err = sql.Open("mysql", "root:@tcp(localhost:3306)/borm_test?charset=utf8mb4")
-	db, err = sql.Open("mysql", "root:semaphoredb@tcp(localhost:3306)/borm_test?charset=utf8mb4")
+	db, err = sql.Open("sqlite3", "test.db")
 	if err != nil {
 		log.Fatal(err)
 	}
+	db.Exec("CREATE TABLE test (id int(11) NOT NULL, name varchar(255) NOT NULL, age int(11) NOT NULL, ctime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00', ctime2 datetime NOT NULL, ctime3 date NOT NULL, ctime4 bigint(20) NOT NULL);INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01 16:28:26','2019-03-01',1551428928),(2,'zhangwei',28,'2019-03-01 09:21:20','0000-00-00 00:00:00','0000-00-00',0);CREATE TABLE test2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(255) NOT NULL, age int(11) NOT NULL);create index idx_ctime on test (ctime);")
 }
 
 type x struct {
@@ -83,14 +83,14 @@ func BenchmarkNormalSelect(b *testing.B) {
 	}
 }
 
-func TestForceIndex(t *testing.T) {
+func TestIndexedBy(t *testing.T) {
 	Convey("normal", t, func() {
-		So(ForceIndex("idx_ctime").Type(), ShouldEqual, _forceIndex)
+		So(IndexedBy("idx_ctime").Type(), ShouldEqual, _indexedBy)
 
 		var ids []int64
 		tbl := Table(db, "test").Debug()
 
-		n, err := tbl.Select(&ids, Fields("id"), ForceIndex("idx_ctime"), Limit(100))
+		n, err := tbl.Select(&ids, Fields("id"), IndexedBy("idx_ctime"), Limit(100))
 
 		So(err, ShouldBeNil)
 		So(n, ShouldBeGreaterThan, 1)
@@ -268,7 +268,7 @@ func TestInsert(t *testing.T) {
 			So(n, ShouldEqual, 1)
 		})
 
-		Convey("on duplicate key update", func() {
+		Convey("on conflict do update set", func() {
 			o := x{
 				X:  "Orca1",
 				Y:  20,
@@ -276,8 +276,8 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnDuplicateKeyUpdate(V{
-				"name": "OnDuplicateKeyUpdate",
+			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnConflictDoUpdateSet([]string{"name"}, V{
+				"name": "OnConflictDoUpdateSet",
 				"age":  29,
 			}))
 
@@ -285,7 +285,7 @@ func TestInsert(t *testing.T) {
 			So(n, ShouldEqual, 1)
 		})
 
-		Convey("on duplicate key update with U", func() {
+		Convey("on conflict do update set with U", func() {
 			o := x{
 				X:  "Orca1",
 				Y:  20,
@@ -293,8 +293,8 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnDuplicateKeyUpdate(V{
-				"name": "OnDuplicateKeyUpdate",
+			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnConflictDoUpdateSet([]string{"name"}, V{
+				"name": "OnConflictDoUpdateSet",
 				"age":  U("age+1"),
 			}))
 
@@ -2485,13 +2485,13 @@ func TestMisc(t *testing.T) {
 		So(len(stmtArgs), ShouldEqual, 0)
 	})
 
-	Convey("onDuplicateKeyUpdateItem - Type", t, func() {
-		var odku onDuplicateKeyUpdateItem
-		So(odku.Type(), ShouldEqual, _onDuplicateKeyUpdate)
+	Convey("onConflictDoUpdateSetItem - Type", t, func() {
+		var odku onConflictDoUpdateSetItem
+		So(odku.Type(), ShouldEqual, _onConflictDoUpdateSet)
 	})
 
-	Convey("OnDuplicateKeyUpdate - Empty", t, func() {
-		w := OnDuplicateKeyUpdate(V{})
+	Convey("OnConflictDoUpdateSet - Empty", t, func() {
+		w := OnConflictDoUpdateSet([]string{"name"}, V{})
 		var sb strings.Builder
 		var stmtArgs []interface{}
 		w.BuildSQL(&sb)
