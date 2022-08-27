@@ -238,7 +238,7 @@
    n, err := t.Select(&o, b.Where(conds...))
    ```
 
-- **联表查询(临时)**
+- **联表查询**
    ``` golang
    type Info struct {
       ID   int64  `borm:"t_usr.id"` // 字段定义加表名
@@ -246,10 +246,14 @@
       Tag  string `borm:"t_tag.tag"`
    }
    
+   // 方法一
    t := b.Table(d.DB, "t_usr join t_tag on t_usr.id=t_tag.id") // 表名用join语句
-
    var o Info
    n, err := t.Select(&o, b.Where(b.Eq("t_usr.id", id))) // 条件加上表名
+
+   // 方法二
+   t = b.Table(d.DB, "t_usr") // 正常表名
+   n, err = t.Select(&o, b.Join("join t_tag on t_usr.id=t_tag.id"), b.Where(b.Eq("t_usr.id", id))) // 条件需要加上表名
    ```
 
 -  获取插入的自增id
