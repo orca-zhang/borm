@@ -29,6 +29,7 @@ import (
 
 const (
 	_fields = 1 >> iota
+	_join
 	_where
 	_groupBy
 	_having
@@ -106,6 +107,11 @@ func (t *BormTable) ToTimestamp() *BormTable {
 // Fields .
 func Fields(fields ...string) *fieldsItem {
 	return &fieldsItem{Fields: fields}
+}
+
+// Join .
+func Join(stmt string) *joinItem {
+	return &joinItem{Stmt: stmt}
 }
 
 // Where .
@@ -812,7 +818,7 @@ func fieldEscape(sb *strings.Builder, field string) {
 	if field == "" {
 		return
 	}
-	if strings.IndexAny(field, "( `.") == -1 {
+	if !strings.ContainsAny(field, ",( `.") {
 		sb.WriteString("`")
 		sb.WriteString(field)
 		sb.WriteString("`")
@@ -879,6 +885,22 @@ func (w *onDuplicateKeyUpdateItem) BuildSQL(sb *strings.Builder) {
 
 func (w *onDuplicateKeyUpdateItem) BuildArgs(stmtArgs *[]interface{}) {
 	*stmtArgs = append(*stmtArgs, w.Vals...)
+}
+
+type joinItem struct {
+	Stmt string
+}
+
+func (w *joinItem) Type() int {
+	return _join
+}
+
+func (w *joinItem) BuildSQL(sb *strings.Builder) {
+	sb.WriteString(" ")
+	sb.WriteString(w.Stmt)
+}
+
+func (w *joinItem) BuildArgs(stmtArgs *[]interface{}) {
 }
 
 type forceIndexItem struct {
