@@ -184,6 +184,17 @@ func TestSelect(t *testing.T) {
 			So(n, ShouldBeGreaterThan, 1)
 			So(len(ids), ShouldBeGreaterThan, 1)
 		})
+
+		Convey("join select", func() {
+			var ids []int64
+			tbl := Table(db, "test").Debug()
+
+			n, err := tbl.Select(&ids, Fields("test.id"), Join("join test2 on test.id=test2.id"), Limit(100))
+
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+			So(len(ids), ShouldEqual, 1)
+		})
 	})
 }
 
