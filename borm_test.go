@@ -29,7 +29,7 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, name varchar(255), age int(11), ctime timestamp DEFAULT '0000-00-00 00:00:00', ctime2 datetime, ctime3 date, ctime4 bigint(20));INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01 16:28:26','2019-03-01',1551428928),(2,'zhangwei',28,'2019-03-01 09:21:20','0000-00-00 00:00:00','0000-00-00',0);CREATE TABLE test2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(255), age int(11));create index idx_ctime on test (ctime);")
+	db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, name varchar(255), age int(11), ctime timestamp DEFAULT '0000-00-00 00:00:00', ctime2 datetime, ctime3 date, ctime4 bigint(20));INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01 16:28:26','2019-03-01',1551428928),(2,'zhangwei',28,'2019-03-01 09:21:20','0000-00-00 00:00:00','0000-00-00',0);CREATE TABLE test2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(255), age int(11));create index idx_ctime on test (ctime);INSERT INTO test2 VALUES (2,'orca',29);")
 }
 
 type x struct {
@@ -185,6 +185,17 @@ func TestSelect(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 1)
 			So(len(ids), ShouldBeGreaterThan, 1)
+		})
+
+		Convey("join select", func() {
+			var ids []int64
+			tbl := Table(db, "test").Debug()
+
+			n, err := tbl.Select(&ids, Fields("test.id"), Join("join test2 on test.id=test2.id"), Limit(100))
+
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+			So(len(ids), ShouldEqual, 1)
 		})
 	})
 }
