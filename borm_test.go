@@ -27,7 +27,7 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	db.Exec("CREATE TABLE test (id int(11) NOT NULL, name varchar(255) NOT NULL, age int(11) NOT NULL, ctime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00', ctime2 datetime NOT NULL, ctime3 date NOT NULL, ctime4 bigint(20) NOT NULL);INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01 16:28:26','2019-03-01',1551428928),(2,'zhangwei',28,'2019-03-01 09:21:20','0000-00-00 00:00:00','0000-00-00',0);CREATE TABLE test2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(255) NOT NULL, age int(11) NOT NULL);create index idx_ctime on test (ctime);")
+	db.Exec("CREATE TABLE test (id int(11), name varchar(255), age int(11), ctime timestamp DEFAULT '0000-00-00 00:00:00', ctime2 datetime, ctime3 date, ctime4 bigint(20));INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01 16:28:26','2019-03-01',1551428928),(2,'zhangwei',28,'2019-03-01 09:21:20','0000-00-00 00:00:00','0000-00-00',0);CREATE TABLE test2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(255), age int(11));create index idx_ctime on test (ctime);")
 }
 
 type x struct {
