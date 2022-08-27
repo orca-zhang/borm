@@ -29,13 +29,14 @@ import (
 
 const (
 	_fields = 1 >> iota
+	_join
 	_where
 	_groupBy
 	_having
 	_orderBy
 	_limit
-	_onDuplicateKeyUpdate
-	_forceIndex
+	_onConflictDoUpdateSet
+	_indexedBy
 
 	_andCondEx = iota
 	_orCondEx
@@ -108,6 +109,11 @@ func Fields(fields ...string) *fieldsItem {
 	return &fieldsItem{Fields: fields}
 }
 
+// Join .
+func Join(stmt string) *joinItem {
+	return &joinItem{Stmt: stmt}
+}
+
 // Where .
 func Where(conds ...interface{}) *whereItem {
 	if l := len(conds); l > 0 {
@@ -177,15 +183,22 @@ func Limit(i ...interface{}) *limitItem {
 	panic("too few or too many limit params")
 }
 
-// OnDuplicateKeyUpdate .
-func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
-	res := &onDuplicateKeyUpdateItem{}
+// OnConflictDoUpdateSet .
+func OnConflictDoUpdateSet(fields []string, keyVals V) *onConflictDoUpdateSetItem {
+	res := &onConflictDoUpdateSetItem{}
 	if len(keyVals) <= 0 {
 		return res
 	}
 
 	var sb strings.Builder
-	sb.WriteString(" on duplicate key update ")
+	sb.WriteString(" on conflict(")
+	for i, field := range fields {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		fieldEscape(&sb, field)
+	}
+	sb.WriteString(") do update set")
 	argCnt := 0
 	for k, v := range keyVals {
 		if argCnt > 0 {
@@ -205,9 +218,9 @@ func OnDuplicateKeyUpdate(keyVals V) *onDuplicateKeyUpdateItem {
 	return res
 }
 
-// ForceIndex .
-func ForceIndex(idx string) *forceIndexItem {
-	return &forceIndexItem{idx: idx}
+// IndexedBy .
+func IndexedBy(idx string) *indexedByItem {
+	return &indexedByItem{idx: idx}
 }
 
 // Select .
@@ -422,7 +435,7 @@ func (t *BormTable) InsertIgnore(objs interface{}, args ...BormItem) (int, error
 		}
 	}
 
-	return t.insert("insert ignore into ", objs, args)
+	return t.insert("insert or ignore into ", objs, args)
 }
 
 // ReplaceInto .
@@ -812,7 +825,7 @@ func fieldEscape(sb *strings.Builder, field string) {
 	if field == "" {
 		return
 	}
-	if strings.IndexAny(field, "( `.") == -1 {
+	if !strings.ContainsAny(field, ",( `.") {
 		sb.WriteString("`")
 		sb.WriteString(field)
 		sb.WriteString("`")
@@ -864,36 +877,52 @@ func (w *fieldsItem) BuildSQL(sb *strings.Builder) {
 func (w *fieldsItem) BuildArgs(stmtArgs *[]interface{}) {
 }
 
-type onDuplicateKeyUpdateItem struct {
+type onConflictDoUpdateSetItem struct {
 	Conds string
 	Vals  []interface{}
 }
 
-func (w *onDuplicateKeyUpdateItem) Type() int {
-	return _onDuplicateKeyUpdate
+func (w *onConflictDoUpdateSetItem) Type() int {
+	return _onConflictDoUpdateSet
 }
 
-func (w *onDuplicateKeyUpdateItem) BuildSQL(sb *strings.Builder) {
+func (w *onConflictDoUpdateSetItem) BuildSQL(sb *strings.Builder) {
 	sb.WriteString(w.Conds)
 }
 
-func (w *onDuplicateKeyUpdateItem) BuildArgs(stmtArgs *[]interface{}) {
+func (w *onConflictDoUpdateSetItem) BuildArgs(stmtArgs *[]interface{}) {
 	*stmtArgs = append(*stmtArgs, w.Vals...)
 }
 
-type forceIndexItem struct {
+type joinItem struct {
+	Stmt string
+}
+
+func (w *joinItem) Type() int {
+	return _join
+}
+
+func (w *joinItem) BuildSQL(sb *strings.Builder) {
+	sb.WriteString(" ")
+	sb.WriteString(w.Stmt)
+}
+
+func (w *joinItem) BuildArgs(stmtArgs *[]interface{}) {
+}
+
+type indexedByItem struct {
 	idx string
 }
 
-func (w *forceIndexItem) Type() int {
-	return _forceIndex
+func (w *indexedByItem) Type() int {
+	return _indexedBy
 }
 
-func (w *forceIndexItem) BuildSQL(sb *strings.Builder) {
-	sb.WriteString(" force index(" + w.idx + ")")
+func (w *indexedByItem) BuildSQL(sb *strings.Builder) {
+	sb.WriteString(" indexed by(" + w.idx + ")")
 }
 
-func (w *forceIndexItem) BuildArgs(stmtArgs *[]interface{}) {
+func (w *indexedByItem) BuildArgs(stmtArgs *[]interface{}) {
 	return
 }
 
@@ -1390,6 +1419,11 @@ func Between(field string, i interface{}, j interface{}) *ormCond {
 // Like .
 func Like(field string, pattern string) *ormCond {
 	return &ormCond{Field: field, Op: " like ?", Args: []interface{}{pattern}}
+}
+
+// GLOB .
+func GLOB(field string, pattern string) *ormCond {
+	return &ormCond{Field: field, Op: " glob ?", Args: []interface{}{pattern}}
 }
 
 // In .
