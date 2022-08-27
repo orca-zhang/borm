@@ -30,13 +30,13 @@ import (
 const (
 	_fields = 1 >> iota
 	_join
+	_indexedBy
 	_where
 	_groupBy
 	_having
 	_orderBy
 	_limit
 	_onConflictDoUpdateSet
-	_indexedBy
 
 	_andCondEx = iota
 	_orCondEx
@@ -919,7 +919,7 @@ func (w *indexedByItem) Type() int {
 }
 
 func (w *indexedByItem) BuildSQL(sb *strings.Builder) {
-	sb.WriteString(" indexed by(" + w.idx + ")")
+	sb.WriteString(" indexed by " + w.idx)
 }
 
 func (w *indexedByItem) BuildArgs(stmtArgs *[]interface{}) {
