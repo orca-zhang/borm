@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -22,12 +23,13 @@ var (
 )
 
 func init() {
+	os.RemoveAll("test.db")
 	var err error
 	db, err = sql.Open("sqlite3", "test.db")
 	if err != nil {
 		log.Fatal(err)
 	}
-	db.Exec("CREATE TABLE test (id int(11), name varchar(255), age int(11), ctime timestamp DEFAULT '0000-00-00 00:00:00', ctime2 datetime, ctime3 date, ctime4 bigint(20));INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01 16:28:26','2019-03-01',1551428928),(2,'zhangwei',28,'2019-03-01 09:21:20','0000-00-00 00:00:00','0000-00-00',0);CREATE TABLE test2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(255), age int(11));create index idx_ctime on test (ctime);")
+	db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, name varchar(255), age int(11), ctime timestamp DEFAULT '0000-00-00 00:00:00', ctime2 datetime, ctime3 date, ctime4 bigint(20));INSERT INTO test VALUES (1,'orca',29,'2019-03-01 08:29:12','2019-03-01 16:28:26','2019-03-01',1551428928),(2,'zhangwei',28,'2019-03-01 09:21:20','0000-00-00 00:00:00','0000-00-00',0);CREATE TABLE test2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(255), age int(11));create index idx_ctime on test (ctime);")
 }
 
 type x struct {
@@ -276,7 +278,7 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnConflictDoUpdateSet([]string{"name"}, V{
+			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnConflictDoUpdateSet([]string{"id"}, V{
 				"name": "OnConflictDoUpdateSet",
 				"age":  29,
 			}))
@@ -293,7 +295,7 @@ func TestInsert(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnConflictDoUpdateSet([]string{"name"}, V{
+			n, err := tbl.Insert(&o, Fields("name", "ctime", "age"), OnConflictDoUpdateSet([]string{"id"}, V{
 				"name": "OnConflictDoUpdateSet",
 				"age":  U("age+1"),
 			}))
@@ -333,7 +335,7 @@ func TestUpdate(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Update(&o, Where("id = ?", 0))
+			n, err := tbl.Update(&o, Where("id = ?", 1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -345,7 +347,7 @@ func TestUpdate(t *testing.T) {
 			n, err := tbl.Update(V{
 				"name": "OrcaUpdated",
 				"age":  88,
-			}, Where("id = ?", 0))
+			}, Where("id = ?", 1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -356,7 +358,7 @@ func TestUpdate(t *testing.T) {
 
 			n, err := tbl.Update(V{
 				"age": U("age+1"),
-			}, Where("id = ?", 0))
+			}, Where("id = ?", 1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -368,7 +370,7 @@ func TestUpdate(t *testing.T) {
 			n, err := tbl.Update(V{
 				"name": "OrcaUpdatedFields",
 				"age":  88,
-			}, Fields("name", "age"), Where("id = ?", 0))
+			}, Fields("name", "age"), Where("id = ?", 1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -380,7 +382,7 @@ func TestUpdate(t *testing.T) {
 			n, err := tbl.Update(V{
 				"name": "OrcaUpdatedFields",
 				"age":  U("age+1"),
-			}, Fields("age"), Where("id = ?", 0))
+			}, Fields("age"), Where("id = ?", 1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -394,7 +396,7 @@ func TestUpdate(t *testing.T) {
 			}
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Update(&o, Fields("name", "ctime", "age"), Where("id = ?", 0))
+			n, err := tbl.Update(&o, Fields("name", "ctime", "age"), Where("id = ?", 1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -406,6 +408,7 @@ func TestDelete(t *testing.T) {
 
 	Convey("normal", t, func() {
 
+		/* not support in sqlite
 		Convey("single delete", func() {
 			tbl := Table(db, "test").Debug()
 
@@ -413,12 +416,12 @@ func TestDelete(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
-		})
+		})*/
 
 		Convey("bulk delete", func() {
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Delete(Where("`id`=0"))
+			n, err := tbl.Delete(Where("`id`=1"))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldBeGreaterThan, 0)
@@ -2441,17 +2444,17 @@ func TestMisc(t *testing.T) {
 				X:     "xxx2",
 				ctime: 1,
 			}
-			n, err := t.Update(&o, Where("id>=0"), Limit(1))
+			n, err := t.Update(&o, Where("id=2"))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 
 			o.X += "1"
-			n, err = t.UseNameWhenTagEmpty().Update(&o, Where("id>=0"), Limit(1))
+			n, err = t.UseNameWhenTagEmpty().Update(&o, Where("id=2"))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 
 			o.X += "1"
-			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("name"), Where("id>=0"), Limit(1))
+			n, err = t.UseNameWhenTagEmpty().Update(&o, Fields("name"), Where("id=2"))
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 		})
@@ -2491,7 +2494,7 @@ func TestMisc(t *testing.T) {
 	})
 
 	Convey("OnConflictDoUpdateSet - Empty", t, func() {
-		w := OnConflictDoUpdateSet([]string{"name"}, V{})
+		w := OnConflictDoUpdateSet([]string{"id"}, V{})
 		var sb strings.Builder
 		var stmtArgs []interface{}
 		w.BuildSQL(&sb)
