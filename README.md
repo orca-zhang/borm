@@ -167,7 +167,7 @@
 
    // 解决主键冲突
    n, err = t.Insert(&o, b.Fields("name", "tag"),
-      b.OnConflictDoUpdateSet([]string{"name"}, b.V{
+      b.OnConflictDoUpdateSet([]string{"id"}, b.V{
          "name": "new_name",
          "age":  b.U("age+1"), // 使用b.U来处理非变量更新
       }))
@@ -205,24 +205,22 @@
          "name": "new_name",
          "tag":  "tag1,tag2,tag3",
          "age":  b.U("age+1"), // 使用b.U来处理非变量更新
-      }, b.Where(b.Eq("id", id)), b.Limit(1))
+      }, b.Where(b.Eq("id", id)))
 
    // 使用map更新部分字段
    n, err = t.Update(b.V{
          "name": "new_name",
          "tag":  "tag1,tag2,tag3",
-      }, b.Fields("name"), b.Where(b.Eq("id", id)), b.Limit(1))
+      }, b.Fields("name"), b.Where(b.Eq("id", id)))
 
-   n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)), b.Limit(1))
+   n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)))
    ```
 
 - 删除
    ``` golang
    // 根据条件删除
    n, err = t.Delete(b.Where("name = ?", name))
-
-   // 根据条件删除部分条数
-   n, err = t.Delete(b.Where(b.Eq("id", id)), b.Limit(1))
+   n, err = t.Delete(b.Where(b.Eq("id", id)))
    ```
 
 - **可变条件**
@@ -360,7 +358,7 @@
 
 |示例|说明|
 |-|-|
-|OnConflictDoUpdateSet([]string{"name"}, V{"name": "new"})|解决主键冲突的更新|
+|OnConflictDoUpdateSet([]string{"id"}, V{"name": "new"})|解决主键冲突的更新|
 
 ### IndexedBy
 
