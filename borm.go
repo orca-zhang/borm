@@ -1066,7 +1066,7 @@ func (l *limitItem) Type() int {
 func (l *limitItem) BuildSQL(sb *strings.Builder) {
 	sb.WriteString(" limit ?")
 	if len(l.I) > 1 {
-		sb.WriteString(",?")
+		sb.WriteString(" offset ?")
 	}
 }
 
