@@ -121,7 +121,7 @@ func TestSelect(t *testing.T) {
 			var o []x
 			tbl := Table(db, "test").Debug()
 
-			n, err := tbl.Select(&o, Where(Gte("id", 0), Lte("id", 1000), Between("id", 0, 1000)), OrderBy("id", "name"), Limit(0, 100))
+			n, err := tbl.Select(&o, Where(Gte("id", 0), Lte("id", 1000), Between("id", 0, 1000)), OrderBy("id", "name"), Limit(100, 0))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 2)
