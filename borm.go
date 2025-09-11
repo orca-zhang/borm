@@ -796,9 +796,9 @@ func (t *BormTable) inputArgs(stmtArgs *[]interface{}, cols []reflect2.StructFie
 		// 时间类型特殊处理
 		if col.Type().String() == "time.Time" {
 			if t.Cfg.ToTimestamp {
-				v = v.(*time.Time).Unix()
+				v = v.(*time.Time).UTC().Unix()
 			} else {
-				v = v.(*time.Time).Format(_timeLayout)
+				v = v.(*time.Time).UTC().Format(_timeLayout)
 			}
 		}
 
@@ -1123,7 +1123,7 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 		n, _ := fmt.Sscanf(tmp, "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &min, &sec)
 		if n == 3 || n == 6 {
 			if isTime {
-				*(*time.Time)(ptrVal) = time.Unix(toUnix(year, month, day, hour, min, sec), 0)
+				*(*time.Time)(ptrVal) = time.Unix(toUnix(year, month, day, hour, min, sec), 0).UTC()
 				return nil
 			}
 			ts := toUnix(year, month, day, hour, min, sec)
@@ -1160,7 +1160,7 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 			if err != nil {
 				return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
 			}
-			*(*time.Time)(ptrVal) = time.Unix(i64, 0)
+			*(*time.Time)(ptrVal) = time.Unix(i64, 0).UTC()
 			return nil
 		}
 	}
@@ -1254,7 +1254,7 @@ func (dest *scanner) Scan(src interface{}) error {
 	isTime := dt.String() == "time.Time"
 	// int64 => time.Time
 	if sk == reflect.Int64 && isTime {
-		*(*time.Time)(dest.Val) = time.Unix(src.(int64), 0)
+		*(*time.Time)(dest.Val) = time.Unix(src.(int64), 0).UTC()
 		return nil
 	}
 
@@ -1264,9 +1264,9 @@ func (dest *scanner) Scan(src interface{}) error {
 		return scanFromString(isTime, st, dt, dest.Val, string(src.([]byte)))
 	} else if st.String() == "time.Time" {
 		if dk == reflect.String {
-			return dest.Scan(src.(time.Time).Format(_timeLayout))
+			return dest.Scan(src.(time.Time).UTC().Format(_timeLayout))
 		}
-		return dest.Scan(src.(time.Time).Unix())
+		return dest.Scan(src.(time.Time).UTC().Unix())
 	}
 
 	switch dk {
@@ -1486,12 +1486,10 @@ func loadFromCache(file string, line int) *DataBindingItem {
 	return nil
 }
 
-var (
-	_dataBindingCache sync.Map
-)
+var _dataBindingCache sync.Map
 
 /*
-   Mock相关
+Mock相关
 */
 var (
 	_mockData []*MockMatcher
