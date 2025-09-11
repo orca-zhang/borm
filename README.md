@@ -157,9 +157,9 @@
    </tr>
    <tr>
       <td>缓存优化</td>
-      <td><strong>Reuse默认开启</strong></td>
-      <td>:x:</td>
-      <td>:x:</td>
+      <td>:rocket:</td>
+      <td>:white_check_mark:</td>
+      <td>:white_check_mark:</td>
       <td>提供2-14倍性能提升，零分配设计</td>
    </tr>
 </table>

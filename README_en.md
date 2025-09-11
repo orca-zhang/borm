@@ -156,9 +156,9 @@
    </tr>
    <tr>
       <td>Cache Optimization</td>
-      <td><strong>Reuse enabled by default</strong></td>
-      <td>:x:</td>
-      <td>:x:</td>
+      <td>:rocket:</td>
+      <td>:white_check_mark:</td>
+      <td>:white_check_mark:</td>
       <td>Provides 2-14x performance improvement, zero allocation design</td>
    </tr>
 </table>
