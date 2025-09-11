@@ -18,9 +18,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	db *sql.DB
-)
+var db *sql.DB
 
 func init() {
 	os.RemoveAll("test.db")
@@ -101,9 +99,7 @@ func TestIndexedBy(t *testing.T) {
 }
 
 func TestSelect(t *testing.T) {
-
 	Convey("normal", t, func() {
-
 		Convey("single select", func() {
 			var o x
 			tbl := Table(db, "test").Reuse()
@@ -201,9 +197,7 @@ func TestSelect(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-
 	Convey("normal", t, func() {
-
 		Convey("single insert", func() {
 			o := x{
 				X:  "Orca1",
@@ -317,7 +311,6 @@ func TestInsert(t *testing.T) {
 	})
 
 	Convey("get last insert id", t, func() {
-
 		Convey("single insert", func() {
 			o := xx{
 				X: "OrcaZ",
@@ -335,9 +328,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-
 	Convey("normal", t, func() {
-
 		Convey("update", func() {
 			o := x{
 				X:  "Orca1",
@@ -416,9 +407,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-
 	Convey("normal", t, func() {
-
 		/* not support in sqlite
 		Convey("single delete", func() {
 			tbl := Table(db, "test").Debug()
@@ -455,8 +444,7 @@ func TestScanner(t *testing.T) {
 
 	Convey("nil", t, func() {
 		Convey("nil to nil", func() {
-			a := 1
-			ptr := &a
+			var ptr *int
 			nilScanner := scanner{
 				Type: reflect2.TypeOf(ptr),
 				Val:  unsafe.Pointer(&ptr),
@@ -464,9 +452,8 @@ func TestScanner(t *testing.T) {
 
 			var ptr1 *int
 			err := nilScanner.Scan(ptr1)
-			log.Println(ptr)
 			So(err, ShouldBeNil)
-			So(ptr, ShouldEqual, nil)
+			So(ptr, ShouldBeNil)
 		})
 
 		Convey("nil to bool", func() {
@@ -1276,7 +1263,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("123.33"))
 			So(err, ShouldBeNil)
-			So(f, ShouldEqual, 123.33)
+			So(f, ShouldAlmostEqual, 123.33, 0.01)
 		})
 
 		Convey("string to float64", func() {

@@ -18,6 +18,7 @@ import (
 	"path"
 	"reflect"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,6 +45,13 @@ const (
 
 const (
 	_timeLayout = "2006-01-02 15:04:05"
+)
+
+// 时间解析布局常量，避免重复字符串分配
+var (
+	timeLayoutWithNanoTZ = "2006-01-02 15:04:05.999999999 -07:00"
+	timeLayoutWithTZ     = "2006-01-02 15:04:05 -07:00"
+	timeLayoutWithZ      = "2006-01-02 15:04:05Z"
 )
 
 var config struct {
@@ -495,8 +503,50 @@ func (t *BormTable) insert(prefix string, objs interface{}, args []BormItem) (in
 				isPtrArray = true
 			}
 		}
-	// case reflect.Map:
-	// TODO
+	case reflect.Map:
+		// 处理map类型
+		mapType := rt.(reflect2.MapType)
+		keyType := mapType.Key()
+
+		// 只支持string key的map
+		if keyType.Kind() != reflect.String {
+			return 0, errors.New("map key must be string type")
+		}
+
+		// 使用通用字段收集函数处理map
+		var fieldInfos []FieldInfo
+		if err := t.collectFieldsGeneric(objs, rt, &sb, &fieldInfos); err != nil {
+			return 0, err
+		}
+
+		// 构建VALUES部分
+		sb.WriteString(") values ")
+		sb.WriteString("(")
+		for i := range fieldInfos {
+			if i > 0 {
+				sb.WriteString(",")
+			}
+			sb.WriteString("?")
+		}
+		sb.WriteString(")")
+
+		// 构建参数
+		for _, fieldInfo := range fieldInfos {
+			stmtArgs = append(stmtArgs, fieldInfo.GetValue(nil))
+		}
+
+		// 执行SQL
+		result, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
+		if err != nil {
+			return 0, err
+		}
+
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return 0, err
+		}
+
+		return int(affected), nil
 	default:
 		return 0, errors.New("argument 2 should be map or ptr")
 	}
@@ -522,26 +572,7 @@ func (t *BormTable) insert(prefix string, objs interface{}, args []BormItem) (in
 		args = args[1:]
 
 	} else {
-		for i := 0; i < s.NumField(); i++ {
-			f := s.Field(i)
-			ft := f.Tag().Get("borm")
-
-			if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
-				continue
-			}
-
-			if len(cols) > 0 {
-				sb.WriteString(",")
-			}
-
-			if ft == "" {
-				fieldEscape(&sb, f.Name())
-			} else {
-				fieldEscape(&sb, ft)
-			}
-
-			cols = append(cols, f)
-		}
+		t.collectFieldsForInsert(s, &sb, &cols)
 	}
 
 	sb.WriteString(") values ")
@@ -819,6 +850,9 @@ type BormTable struct {
 	Name string
 	Cfg  Config
 	ctx  context.Context
+
+	// 字段映射缓存，避免重复计算
+	fieldMapCache sync.Map
 }
 
 func fieldEscape(sb *strings.Builder, field string) {
@@ -826,9 +860,8 @@ func fieldEscape(sb *strings.Builder, field string) {
 		return
 	}
 	if !strings.ContainsAny(field, ",( `.") {
-		sb.WriteString("`")
-		sb.WriteString(field)
-		sb.WriteString("`")
+		// 优化：一次性写入，减少函数调用
+		sb.WriteString("`" + field + "`")
 	} else {
 		// TODO: 处理alias场景
 		sb.WriteString(field)
@@ -836,18 +869,257 @@ func fieldEscape(sb *strings.Builder, field string) {
 }
 
 func (t *BormTable) getStructFieldMap(s reflect2.StructType) map[string]reflect2.StructField {
+	// 使用结构体类型作为缓存key
+	typeKey := s.String()
+
+	// 尝试从缓存中获取
+	if cached, ok := t.fieldMapCache.Load(typeKey); ok {
+		return cached.(map[string]reflect2.StructField)
+	}
+
+	// 缓存未命中，构建字段映射
 	m := make(map[string]reflect2.StructField)
+	t.collectStructFields(s, m, "")
+
+	// 存储到缓存中
+	t.fieldMapCache.Store(typeKey, m)
+	return m
+}
+
+// collectStructFields 递归收集结构体字段，支持embedded struct
+func (t *BormTable) collectStructFields(s reflect2.StructType, m map[string]reflect2.StructField, prefix string) {
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
 		ft := f.Tag().Get("borm")
 
+		// 忽略borm tag为"-"的字段
+		if ft == "-" {
+			continue
+		}
+
+		// 处理embedded struct
+		if f.Anonymous() && f.Type().Kind() == reflect.Struct {
+			embeddedStruct := f.Type().(reflect2.StructType)
+			t.collectStructFields(embeddedStruct, m, prefix)
+			continue
+		}
+
+		// 处理普通字段
+		fieldName := f.Name()
+		if prefix != "" {
+			fieldName = prefix + "." + fieldName
+		}
+
 		if ft != "" {
 			m[ft] = f
 		} else if t.Cfg.UseNameWhenTagEmpty {
-			m[f.Name()] = f
+			m[fieldName] = f
 		}
 	}
-	return m
+}
+
+// collectFieldsForInsert 收集字段用于INSERT操作，支持embedded struct
+func (t *BormTable) collectFieldsForInsert(s reflect2.StructType, sb *strings.Builder, cols *[]reflect2.StructField) {
+	t.collectFieldsForInsertWithPrefix(s, sb, cols, "")
+}
+
+// collectFieldsForInsertWithPrefix 递归收集字段，支持embedded struct和前缀
+func (t *BormTable) collectFieldsForInsertWithPrefix(s reflect2.StructType, sb *strings.Builder, cols *[]reflect2.StructField, prefix string) {
+	for i := 0; i < s.NumField(); i++ {
+		f := s.Field(i)
+		ft := f.Tag().Get("borm")
+
+		// 忽略borm tag为"-"的字段
+		if ft == "-" {
+			continue
+		}
+
+		// 处理embedded struct
+		if f.Anonymous() && f.Type().Kind() == reflect.Struct {
+			embeddedStruct := f.Type().(reflect2.StructType)
+			t.collectFieldsForInsertWithPrefix(embeddedStruct, sb, cols, prefix)
+			continue
+		}
+
+		// 处理普通字段
+		if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
+			continue
+		}
+
+		if len(*cols) > 0 {
+			sb.WriteString(",")
+		}
+
+		// 确定字段名
+		fieldName := f.Name()
+		if prefix != "" {
+			fieldName = prefix + "." + fieldName
+		}
+
+		if ft == "" {
+			fieldEscape(sb, fieldName)
+		} else {
+			fieldEscape(sb, ft)
+		}
+
+		*cols = append(*cols, f)
+	}
+}
+
+// collectFieldsGeneric 通用字段收集函数，支持struct和map
+func (t *BormTable) collectFieldsGeneric(objs interface{}, rt reflect2.Type, sb *strings.Builder, fieldInfos *[]FieldInfo) error {
+	switch rt.Kind() {
+	case reflect.Struct:
+		return t.collectStructFieldsGeneric(rt.(reflect2.StructType), sb, fieldInfos, "")
+	case reflect.Map:
+		return t.collectMapFieldsGeneric(objs, rt.(reflect2.MapType), sb, fieldInfos)
+	default:
+		return errors.New("unsupported type for field collection")
+	}
+}
+
+// collectStructFieldsGeneric 收集struct字段，返回通用FieldInfo
+func (t *BormTable) collectStructFieldsGeneric(s reflect2.StructType, sb *strings.Builder, fieldInfos *[]FieldInfo, prefix string) error {
+	for i := 0; i < s.NumField(); i++ {
+		f := s.Field(i)
+		ft := f.Tag().Get("borm")
+
+		// 忽略borm tag为"-"的字段
+		if ft == "-" {
+			continue
+		}
+
+		// 处理embedded struct
+		if f.Anonymous() && f.Type().Kind() == reflect.Struct {
+			embeddedStruct := f.Type().(reflect2.StructType)
+			if err := t.collectStructFieldsGeneric(embeddedStruct, sb, fieldInfos, prefix); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// 处理普通字段
+		if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
+			continue
+		}
+
+		if len(*fieldInfos) > 0 {
+			sb.WriteString(",")
+		}
+
+		// 确定字段名
+		fieldName := f.Name()
+		if prefix != "" {
+			fieldName = prefix + "." + fieldName
+		}
+
+		if ft == "" {
+			fieldEscape(sb, fieldName)
+		} else {
+			fieldEscape(sb, ft)
+		}
+
+		*fieldInfos = append(*fieldInfos, &StructFieldInfo{field: f})
+	}
+	return nil
+}
+
+// collectMapFieldsGeneric 收集map字段，返回通用FieldInfo
+func (t *BormTable) collectMapFieldsGeneric(objs interface{}, mapType reflect2.MapType, sb *strings.Builder, fieldInfos *[]FieldInfo) error {
+	// 检查key类型
+	keyType := mapType.Key()
+	if keyType.Kind() != reflect.String {
+		return errors.New("map key must be string type")
+	}
+
+	// 使用reflect包获取map的迭代器
+	rv := reflect.ValueOf(objs)
+	mapIter := rv.MapRange()
+
+	// 用于存储字段信息的临时结构
+	type mapFieldData struct {
+		key       string
+		value     interface{}
+		valueType reflect2.Type
+	}
+
+	var fieldDataList []mapFieldData
+
+	// 收集map中的所有字段
+	for mapIter.Next() {
+		key := mapIter.Key()
+		value := mapIter.Value()
+		keyStr := key.String()
+		fieldDataList = append(fieldDataList, mapFieldData{
+			key:       keyStr,
+			value:     value.Interface(),
+			valueType: mapType.Elem(),
+		})
+	}
+
+	// 按key排序，确保字段顺序一致
+	sort.Slice(fieldDataList, func(i, j int) bool {
+		return fieldDataList[i].key < fieldDataList[j].key
+	})
+
+	// 构建SQL字段部分和FieldInfo
+	for i, fieldData := range fieldDataList {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		fieldEscape(sb, fieldData.key)
+
+		*fieldInfos = append(*fieldInfos, &MapFieldInfo{
+			key:       fieldData.key,
+			value:     fieldData.value,
+			valueType: fieldData.valueType,
+		})
+	}
+
+	return nil
+}
+
+// FieldInfo 通用字段信息接口
+type FieldInfo interface {
+	GetName() string
+	GetValue(ptr unsafe.Pointer) interface{}
+	GetType() reflect2.Type
+}
+
+// StructFieldInfo struct字段信息实现
+type StructFieldInfo struct {
+	field reflect2.StructField
+}
+
+func (f *StructFieldInfo) GetName() string {
+	return f.field.Name()
+}
+
+func (f *StructFieldInfo) GetValue(ptr unsafe.Pointer) interface{} {
+	return f.field.UnsafeGet(ptr)
+}
+
+func (f *StructFieldInfo) GetType() reflect2.Type {
+	return f.field.Type()
+}
+
+// MapFieldInfo map字段信息实现
+type MapFieldInfo struct {
+	key       string
+	value     interface{}
+	valueType reflect2.Type
+}
+
+func (f *MapFieldInfo) GetName() string {
+	return f.key
+}
+
+func (f *MapFieldInfo) GetValue(ptr unsafe.Pointer) interface{} {
+	return f.value
+}
+
+func (f *MapFieldInfo) GetType() reflect2.Type {
+	return f.valueType
 }
 
 // BormItem .
@@ -1114,11 +1386,96 @@ func toUnix(year, month, day, hour, min, sec int) int64 {
 	return int64((365*year-719528+day-1+(year+3)/4-(year+99)/100+(year+399)/400+int([]int{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}[month-1])+leap)*86400 + hour*3600 + min*60 + sec)
 }
 
+// parseTimeString 优化的时间字符串解析函数
+func parseTimeString(s string) (time.Time, error) {
+	// 处理空字符串或NULL值
+	if s == "" || s == "NULL" || s == "null" {
+		return time.Time{}, nil
+	}
+
+	// 快速检查字符串长度和特征
+	if len(s) < 10 {
+		return time.Time{}, fmt.Errorf("time string too short")
+	}
+
+	// 检查是否包含时区信息
+	hasTimezone := false
+	hasNano := false
+
+	// 检查时区标识符
+	if s[len(s)-1] == 'Z' ||
+		(len(s) >= 6 && (s[len(s)-6:] == "+00:00" || s[len(s)-6:] == "-00:00")) ||
+		(len(s) >= 5 && (s[len(s)-5:] == "+0000" || s[len(s)-5:] == "-0000")) {
+		hasTimezone = true
+	} else if len(s) >= 6 {
+		// 检查是否有 +/- 时区标识
+		for i := len(s) - 6; i < len(s); i++ {
+			if s[i] == '+' || s[i] == '-' {
+				hasTimezone = true
+				break
+			}
+		}
+	}
+
+	// 特殊处理：纯日期格式（如 2019-03-01）不应该被当作有时区处理
+	if len(s) == 10 && s[4] == '-' && s[7] == '-' {
+		hasTimezone = false
+	}
+
+	// 检查是否有毫秒/微秒
+	if len(s) > 19 && s[19] == '.' {
+		hasNano = true
+	}
+
+	// 根据特征选择解析格式
+	var layout string
+	if hasTimezone {
+		if hasNano {
+			// 带时区和毫秒的格式
+			if len(s) > 10 && s[10] == 'T' {
+				layout = time.RFC3339Nano // 2006-01-02T15:04:05.999999999Z07:00
+			} else {
+				layout = "2006-01-02 15:04:05.999999999Z07:00"
+			}
+		} else {
+			// 带时区但无毫秒的格式
+			if len(s) > 10 && s[10] == 'T' {
+				layout = time.RFC3339 // 2006-01-02T15:04:05Z07:00
+			} else if s[len(s)-1] == 'Z' {
+				layout = "2006-01-02 15:04:05Z"
+			} else {
+				layout = "2006-01-02 15:04:05Z07:00"
+			}
+		}
+	} else {
+		// 无时区信息，根据长度选择格式
+		if len(s) == 10 && s[4] == '-' && s[7] == '-' {
+			// 纯日期格式
+			layout = "2006-01-02"
+		} else {
+			// 标准日期时间格式
+			layout = "2006-01-02 15:04:05"
+		}
+	}
+
+	return time.Parse(layout, s)
+}
+
 func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsafe.Pointer, tmp string) error {
 	dk := dt.Kind()
 
 	// 时间格式(DATE/DATETIME) => number/time.Time
 	if isTime || (dk >= reflect.Int && dk <= reflect.Float64) {
+		// 优化的时间解析：先分析字符串特征，再选择对应的解析方法
+		if isTime {
+			parsedTime, err := parseTimeString(tmp)
+			if err == nil {
+				*(*time.Time)(ptrVal) = parsedTime.UTC()
+				return nil
+			}
+		}
+
+		// 如果带时区解析失败，尝试原有的简单格式解析
 		var year, month, day, hour, min, sec int
 		n, _ := fmt.Sscanf(tmp, "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &min, &sec)
 		if n == 3 || n == 6 {
