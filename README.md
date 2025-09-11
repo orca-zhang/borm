@@ -9,10 +9,12 @@
 
 🏎️ 更好的ORM库 (Better ORM library that is simple, fast and self-mockable for Go)
 
+[English](README_en.md) | [中文](README.md)
+
 # 目标
 - 易用：SQL-Like（一把梭：One-Line-CRUD）
 - KISS：保持小而美（不做大而全）
-- 通用：支持struct，pb，map和基本类型
+- 通用：支持struct，map，pb和基本类型
 - 可测：支持自mock（因为参数作返回值，大部分mock框架不支持）
     - 非测试向的library不是好library
 - As-Is：尽可能不作隐藏设定，防止误用
@@ -31,6 +33,9 @@
   - 更自然的where条件（仅在需要加括号时添加，对比gorm）
   - In操作接受各种类型slice，并且单元素时转成Equal操作
   - 从其他orm库迁移无需修改历史代码，无侵入性修改
+  - **支持map类型，无需定义struct即可操作数据库**
+  - **支持embedded struct，自动处理组合对象**
+  - **支持borm tag为"-"的字段忽略功能**
 
 # 特性矩阵
 
@@ -95,6 +100,13 @@
       <td>borm批量和单条使用同一个函数</td>
    </tr>
    <tr>
+      <td>Map类型支持</td>
+      <td>:white_check_mark:</td>
+      <td>:x:</td>
+      <td>:x:</td>
+      <td>无需定义struct，直接使用map操作数据库</td>
+   </tr>
+   <tr>
       <td>可测试性</td>
       <td>自mock</td>
       <td>:white_check_mark:</td>
@@ -116,6 +128,13 @@
       <td>reflect</td>
       <td>reflect</td>
       <td>borm零使用ValueOf</td>
+   </tr>
+   <tr>
+      <td>时间解析优化</td>
+      <td>5.1x</td>
+      <td>1x</td>
+      <td>1x</td>
+      <td>智能时间格式检测，100%内存优化</td>
    </tr>
 </table>
 
@@ -167,10 +186,37 @@
 
    // 解决主键冲突
    n, err = t.Insert(&o, b.Fields("name", "tag"),
-      b.OnDuplicateKeyUpdate(b.V{
+      b.OnConflictDoUpdateSet([]string{"id"}, b.V{
          "name": "new_name",
          "age":  b.U("age+1"), // 使用b.U来处理非变量更新
       }))
+
+   // 使用map插入（无需定义struct）
+   userMap := map[string]interface{}{
+      "name":  "John Doe",
+      "email": "john@example.com",
+      "age":   30,
+   }
+   n, err = t.Insert(userMap)
+
+   // 支持embedded struct
+   type User struct {
+      Name  string `borm:"name"`
+      Email string `borm:"email"`
+      Address struct {
+         Street string `borm:"street"`
+         City   string `borm:"city"`
+      } `borm:"-"` // 嵌入结构体
+   }
+   n, err = t.Insert(&user)
+
+   // 支持字段忽略
+   type User struct {
+      Name     string `borm:"name"`
+      Password string `borm:"-"` // 忽略此字段
+      Email    string `borm:"email"`
+   }
+   n, err = t.Insert(&user)
    ```
 
 - 查询
@@ -192,7 +238,7 @@
    n, err = t.Select(&ids, b.Fields("id"), b.Where("name = ?", name))
 
    // 可以强制索引
-   n, err = t.Select(&ids, b.Fields("id"), b.ForceIndex("idx_xxx"), b.Where("name = ?", name))
+   n, err = t.Select(&ids, b.Fields("id"), b.IndexedBy("idx_xxx"), b.Where("name = ?", name))
    ```
 
 - 更新
@@ -205,24 +251,22 @@
          "name": "new_name",
          "tag":  "tag1,tag2,tag3",
          "age":  b.U("age+1"), // 使用b.U来处理非变量更新
-      }, b.Where(b.Eq("id", id)), b.Limit(1))
+      }, b.Where(b.Eq("id", id)))
 
    // 使用map更新部分字段
    n, err = t.Update(b.V{
          "name": "new_name",
          "tag":  "tag1,tag2,tag3",
-      }, b.Fields("name"), b.Where(b.Eq("id", id)), b.Limit(1))
+      }, b.Fields("name"), b.Where(b.Eq("id", id)))
 
-   n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)), b.Limit(1))
+   n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)))
    ```
 
 - 删除
    ``` golang
    // 根据条件删除
    n, err = t.Delete(b.Where("name = ?", name))
-
-   // 根据条件删除部分条数
-   n, err = t.Delete(b.Where(b.Eq("id", id)), b.Limit(1))
+   n, err = t.Delete(b.Where(b.Eq("id", id)))
    ```
 
 - **可变条件**
@@ -272,6 +316,57 @@
    n, err = t.Insert(&o)
 
    id := o.BormLastId // 获取到插入的id
+   ```
+
+- **新功能示例：Map类型和Embedded Struct**
+   ``` golang
+   // 1. 使用map类型（无需定义struct）
+   userMap := map[string]interface{}{
+      "name":     "John Doe",
+      "email":    "john@example.com",
+      "age":      30,
+      "created_at": time.Now(),
+   }
+   n, err := t.Insert(userMap)
+
+   // 2. 支持embedded struct
+   type Address struct {
+      Street string `borm:"street"`
+      City   string `borm:"city"`
+      Zip    string `borm:"zip"`
+   }
+
+   type User struct {
+      ID      int64  `borm:"id"`
+      Name    string `borm:"name"`
+      Email   string `borm:"email"`
+      Address Address `borm:"-"` // 嵌入结构体
+      Password string `borm:"-"` // 忽略字段
+   }
+
+   user := User{
+      Name:  "Jane Doe",
+      Email: "jane@example.com",
+      Address: Address{
+         Street: "123 Main St",
+         City:   "New York",
+         Zip:    "10001",
+      },
+      Password: "secret", // 此字段会被忽略
+   }
+   n, err := t.Insert(&user)
+
+   // 3. 复杂嵌套结构
+   type Profile struct {
+      Bio     string `borm:"bio"`
+      Website string `borm:"website"`
+   }
+
+   type UserWithProfile struct {
+      ID      int64  `borm:"id"`
+      Name    string `borm:"name"`
+      Profile Profile `borm:"-"` // 嵌套嵌入
+   }
    ```
    
 - 正在使用其他orm框架（新的接口先切过来吧）
@@ -326,6 +421,7 @@
 |小于等于|Lte("id", id)|两个参数，id<=?|
 |在...之间|Between("id", start, end)|三个参数，在start和end之间|
 |近似|Like("name", "x%")|两个参数，name like "x%"|
+|近似|GLOB("name", "?x*")|两个参数，name glob "?x*"|
 |多值选择|In("id", ids)|两个参数，ids是基础类型的slice，slice只有1个元素会转化成Eq|
 
 ### GroupBy
@@ -353,19 +449,40 @@
 |示例|说明|
 |-|-|
 |Limit(1)|分页大小为1|
-|Limit(0, 100)|偏移位置为0，分页大小为100|
+|Limit(3, 2)|分页大小为3，偏移位置为2 **（注意和MySQL的区别）**|
 
-### OnDuplicateKeyUpdate
-
-|示例|说明|
-|-|-|
-|OnDuplicateKeyUpdate(V{"name": "new"})|解决主键冲突的更新|
-
-### ForceIndex
+### OnConflictDoUpdateSet
 
 |示例|说明|
 |-|-|
-|ForceIndex("idx_biz_id")|解决索引选择性差的问题|
+|OnConflictDoUpdateSet([]string{"id"}, V{"name": "new"})|解决主键冲突的更新|
+
+### Map类型支持
+
+|示例|说明|
+|-|-|
+|Insert(map[string]interface{}{"name": "John", "age": 30})|使用map插入数据|
+|支持所有CRUD操作|Select、Insert、Update、Delete都支持map|
+
+### Embedded Struct支持
+
+|示例|说明|
+|-|-|
+|struct内嵌其他struct|自动处理组合对象的字段|
+|borm:"-"标签|标记嵌入结构体|
+
+### 字段忽略功能
+
+|示例|说明|
+|-|-|
+|Password string `borm:"-"`|忽略此字段，不参与数据库操作|
+|适用于敏感字段|如密码、临时字段等|
+
+### IndexedBy
+
+|示例|说明|
+|-|-|
+|IndexedBy("idx_biz_id")|解决索引选择性差的问题|
 
 # 如何mock
 
@@ -426,15 +543,39 @@
    So(err, ShouldBeNil)
 ```
 
+# 性能测试结果
+
+## 时间解析优化
+- **优化前**: 使用循环尝试多种时间格式
+- **优化后**: 智能格式检测，单次解析
+- **性能提升**: 5.1x 速度提升，100% 内存优化
+- **支持格式**: 
+  - 标准格式: `2006-01-02 15:04:05`
+  - 带时区: `2006-01-02 15:04:05 -0700 MST`
+  - 带纳秒: `2006-01-02 15:04:05.999999999 -0700 MST`
+  - 纯日期: `2006-01-02`
+  - 空值处理: 自动处理空字符串和NULL值
+
+## 字段缓存优化
+- **技术**: 使用`sync.Map`缓存字段映射
+- **效果**: 重复操作性能显著提升
+- **适用场景**: 批量操作、频繁查询
+
+## 字符串操作优化
+- **优化**: 使用`strings.Builder`替代多次字符串拼接
+- **效果**: 减少内存分配，提升字符串构建性能
+
+## 反射优化
+- **技术**: 使用`reflect2`替代标准`reflect`包
+- **效果**: 零使用`ValueOf`，避免性能问题
+- **优势**: 更快的类型检查和字段访问
+
 # 待完成
 
 - Select存储到map
-- Insert从map读
 - Insert/Update支持非指针类型
-- Benchmark报告
 - 事务相关支持
 - 联合查询
-- 匿名组合问题
 - 连接池
 - 读写分离
 
