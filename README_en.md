@@ -512,7 +512,7 @@ Option usage example:
 
 Function to test:
 
-```golang
+``` golang
    package x
 
    func test(db *sql.DB) (X, int, error) {
@@ -571,7 +571,6 @@ In the `x.test` method querying `tbl` data, we need to mock database operations
 
 # TODO
 
-- Select store to map
 - Insert/Update support non-pointer types
 - Transaction support
 - Join queries

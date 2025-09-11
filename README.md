@@ -513,7 +513,7 @@
 
 待测函数：
 
-```golang
+``` golang
    package x
 
    func test(db *sql.DB) (X, int, error) {
@@ -572,7 +572,6 @@
 
 # 待完成
 
-- Select存储到map
 - Insert/Update支持非指针类型
 - 事务相关支持
 - 联合查询
