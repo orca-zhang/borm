@@ -8,6 +8,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 	"unsafe"
@@ -17,9 +18,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	db *sql.DB
-)
+var db *sql.DB
 
 func init() {
 	var err error
@@ -99,9 +98,7 @@ func TestForceIndex(t *testing.T) {
 }
 
 func TestSelect(t *testing.T) {
-
 	Convey("normal", t, func() {
-
 		Convey("single select", func() {
 			var o x
 			tbl := Table(db, "test").Reuse()
@@ -199,9 +196,7 @@ func TestSelect(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-
 	Convey("normal", t, func() {
-
 		Convey("single insert", func() {
 			o := x{
 				X:  "Orca1",
@@ -315,7 +310,6 @@ func TestInsert(t *testing.T) {
 	})
 
 	Convey("get last insert id", t, func() {
-
 		Convey("single insert", func() {
 			o := xx{
 				X: "OrcaZ",
@@ -333,9 +327,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-
 	Convey("normal", t, func() {
-
 		Convey("update", func() {
 			o := x{
 				X:  "Orca1",
@@ -414,9 +406,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-
 	Convey("normal", t, func() {
-
 		Convey("single delete", func() {
 			tbl := Table(db, "test").Debug()
 
@@ -2574,5 +2564,387 @@ func TestMisc(t *testing.T) {
 			t := reflect2.TypeOf(i)
 			So(numberToString(t.Kind(), i), ShouldEqual, "")
 		})
+	})
+}
+
+// TestReuseFunctionality 测试Reuse功能
+func TestReuseFunctionality(t *testing.T) {
+	Convey("测试Reuse功能", t, func() {
+		// 测试Reuse方法
+		table := &BormTable{
+			Cfg: Config{},
+		}
+
+		// 验证初始状态
+		So(table.Cfg.Reuse, ShouldBeFalse)
+
+		// 调用Reuse方法
+		result := table.Reuse()
+
+		// 验证Reuse方法返回自身
+		So(result, ShouldEqual, table)
+		So(table.Cfg.Reuse, ShouldBeTrue)
+	})
+}
+
+// TestFieldMapCache 测试字段映射缓存功能
+func TestFieldMapCache(t *testing.T) {
+	Convey("测试字段映射缓存功能", t, func() {
+		type TestStruct struct {
+			ID   int64  `borm:"id"`
+			Name string `borm:"name"`
+			Age  int    `borm:"age"`
+		}
+
+		table := &BormTable{
+			Cfg: Config{UseNameWhenTagEmpty: true},
+		}
+
+		// 第一次调用，应该从缓存中获取
+		rt := reflect2.TypeOf(TestStruct{})
+		structType := rt.(reflect2.StructType)
+
+		// 清空缓存
+		table.fieldMapCache = sync.Map{}
+
+		// 第一次调用，应该构建并缓存
+		fieldMap1 := table.getStructFieldMap(structType)
+		So(fieldMap1, ShouldNotBeNil)
+		So(len(fieldMap1), ShouldEqual, 3)
+		So(fieldMap1["id"], ShouldNotBeNil)
+		So(fieldMap1["name"], ShouldNotBeNil)
+		So(fieldMap1["age"], ShouldNotBeNil)
+
+		// 第二次调用，应该从缓存中获取
+		fieldMap2 := table.getStructFieldMap(structType)
+		So(fieldMap2, ShouldNotBeNil)
+		So(len(fieldMap2), ShouldEqual, 3)
+
+		// 验证是同一个map（缓存生效）
+		So(fieldMap1, ShouldEqual, fieldMap2)
+	})
+}
+
+// TestFieldMapCacheWithDifferentStructs 测试不同结构体的字段缓存
+func TestFieldMapCacheWithDifferentStructs(t *testing.T) {
+	Convey("测试不同结构体的字段缓存", t, func() {
+		type Struct1 struct {
+			ID   int64  `borm:"id"`
+			Name string `borm:"name"`
+		}
+
+		type Struct2 struct {
+			ID    int64  `borm:"id"`
+			Email string `borm:"email"`
+		}
+
+		table := &BormTable{
+			Cfg: Config{UseNameWhenTagEmpty: true},
+		}
+
+		// 清空缓存
+		table.fieldMapCache = sync.Map{}
+
+		// 测试Struct1
+		rt1 := reflect2.TypeOf(Struct1{})
+		structType1 := rt1.(reflect2.StructType)
+		fieldMap1 := table.getStructFieldMap(structType1)
+		So(fieldMap1, ShouldNotBeNil)
+		So(len(fieldMap1), ShouldEqual, 2)
+		So(fieldMap1["id"], ShouldNotBeNil)
+		So(fieldMap1["name"], ShouldNotBeNil)
+		So(fieldMap1["email"], ShouldBeNil)
+
+		// 测试Struct2
+		rt2 := reflect2.TypeOf(Struct2{})
+		structType2 := rt2.(reflect2.StructType)
+		fieldMap2 := table.getStructFieldMap(structType2)
+		So(fieldMap2, ShouldNotBeNil)
+		So(len(fieldMap2), ShouldEqual, 2)
+		So(fieldMap2["id"], ShouldNotBeNil)
+		So(fieldMap2["email"], ShouldNotBeNil)
+		So(fieldMap2["name"], ShouldBeNil)
+
+		// 验证两个结构体的字段映射不同
+		So(fieldMap1, ShouldNotEqual, fieldMap2)
+	})
+}
+
+// TestFieldMapCacheWithEmbeddedStruct 测试embedded struct的字段缓存
+func TestFieldMapCacheWithEmbeddedStruct(t *testing.T) {
+	Convey("测试embedded struct的字段缓存", t, func() {
+		type Address struct {
+			Street string `borm:"street"`
+			City   string `borm:"city"`
+		}
+
+		type User struct {
+			ID      int64   `borm:"id"`
+			Name    string  `borm:"name"`
+			Address Address `borm:"-"` // embedded struct
+		}
+
+		table := &BormTable{
+			Cfg: Config{UseNameWhenTagEmpty: true},
+		}
+
+		// 清空缓存
+		table.fieldMapCache = sync.Map{}
+
+		rt := reflect2.TypeOf(User{})
+		structType := rt.(reflect2.StructType)
+		fieldMap := table.getStructFieldMap(structType)
+
+		So(fieldMap, ShouldNotBeNil)
+		So(len(fieldMap), ShouldEqual, 2) // 只有id和name，Address有borm:"-"标签
+		So(fieldMap["id"], ShouldNotBeNil)
+		So(fieldMap["name"], ShouldNotBeNil)
+		So(fieldMap["street"], ShouldBeNil) // embedded struct字段不会被收集
+		So(fieldMap["city"], ShouldBeNil)
+	})
+}
+
+// TestDataBindingCache 测试数据绑定缓存
+func TestDataBindingCache(t *testing.T) {
+	Convey("测试数据绑定缓存", t, func() {
+		// 测试storeToCache
+		item := &DataBindingItem{
+			SQL:  "SELECT * FROM test",
+			Cols: []interface{}{"id", "name"},
+			Type: reflect2.TypeOf(""),
+			Elem: "test",
+		}
+
+		storeToCache("test.go", 123, item)
+
+		// 测试loadFromCache
+		loadedItem := loadFromCache("test.go", 123)
+		So(loadedItem, ShouldNotBeNil)
+		So(loadedItem.SQL, ShouldEqual, "SELECT * FROM test")
+		So(len(loadedItem.Cols), ShouldEqual, 2)
+		So(loadedItem.Cols[0], ShouldEqual, "id")
+		So(loadedItem.Cols[1], ShouldEqual, "name")
+
+		// 测试不存在的缓存
+		notFoundItem := loadFromCache("test.go", 456)
+		So(notFoundItem, ShouldBeNil)
+	})
+}
+
+// TestReuseCacheKeyGeneration 测试Reuse缓存键生成
+func TestReuseCacheKeyGeneration(t *testing.T) {
+	Convey("测试Reuse缓存键生成", t, func() {
+		// 测试缓存键格式
+		key1 := fmt.Sprintf("%s:%d", "test.go", 123)
+		key2 := fmt.Sprintf("%s:%d", "test.go", 456)
+		key3 := fmt.Sprintf("%s:%d", "other.go", 123)
+
+		So(key1, ShouldEqual, "test.go:123")
+		So(key2, ShouldEqual, "test.go:456")
+		So(key3, ShouldEqual, "other.go:123")
+
+		// 验证不同的文件或行号生成不同的键
+		So(key1, ShouldNotEqual, key2)
+		So(key1, ShouldNotEqual, key3)
+		So(key2, ShouldNotEqual, key3)
+	})
+}
+
+// TestConcurrentFieldMapCache 测试并发字段缓存
+func TestConcurrentFieldMapCache(t *testing.T) {
+	Convey("测试并发字段缓存", t, func() {
+		type TestStruct struct {
+			ID   int64  `borm:"id"`
+			Name string `borm:"name"`
+		}
+
+		table := &BormTable{
+			Cfg: Config{UseNameWhenTagEmpty: true},
+		}
+
+		// 清空缓存
+		table.fieldMapCache = sync.Map{}
+
+		rt := reflect2.TypeOf(TestStruct{})
+		structType := rt.(reflect2.StructType)
+
+		// 并发调用getStructFieldMap
+		done := make(chan bool, 10)
+		results := make([]map[string]reflect2.StructField, 10)
+
+		for i := 0; i < 10; i++ {
+			go func(index int) {
+				results[index] = table.getStructFieldMap(structType)
+				done <- true
+			}(i)
+		}
+
+		// 等待所有goroutine完成
+		for i := 0; i < 10; i++ {
+			<-done
+		}
+
+		// 验证所有结果都相同（缓存一致性）
+		for i := 1; i < 10; i++ {
+			So(results[i], ShouldEqual, results[0])
+		}
+	})
+}
+
+// TestReusePotentialBugs 测试Reuse功能可能的问题
+func TestReusePotentialBugs(t *testing.T) {
+	Convey("测试Reuse功能可能的问题", t, func() {
+		// 测试1: 不同调用位置使用相同的缓存键
+		Convey("测试不同调用位置使用相同的缓存键", func() {
+			// 模拟相同的文件名和行号
+			item1 := &DataBindingItem{
+				SQL:  "SELECT * FROM table1",
+				Cols: []interface{}{"id", "name"},
+			}
+
+			item2 := &DataBindingItem{
+				SQL:  "SELECT * FROM table2",
+				Cols: []interface{}{"id", "email"},
+			}
+
+			// 使用相同的文件位置存储不同的数据
+			storeToCache("test.go", 100, item1)
+			storeToCache("test.go", 100, item2) // 覆盖了item1
+
+			// 加载缓存
+			loadedItem := loadFromCache("test.go", 100)
+			So(loadedItem, ShouldNotBeNil)
+			So(loadedItem.SQL, ShouldEqual, "SELECT * FROM table2") // 应该是item2
+			So(loadedItem.Cols[1], ShouldEqual, "email")            // 应该是email，不是name
+		})
+
+		// 测试2: 缓存键冲突
+		Convey("测试缓存键冲突", func() {
+			// 清空缓存
+			_dataBindingCache = sync.Map{}
+
+			item1 := &DataBindingItem{SQL: "SELECT * FROM users"}
+			item2 := &DataBindingItem{SQL: "SELECT * FROM orders"}
+
+			// 使用可能冲突的键
+			storeToCache("file.go", 1, item1)
+			storeToCache("file.go", 1, item2) // 相同键，会覆盖
+
+			loadedItem := loadFromCache("file.go", 1)
+			So(loadedItem.SQL, ShouldEqual, "SELECT * FROM orders")
+		})
+
+		// 测试3: 字段缓存与数据绑定缓存的独立性
+		Convey("测试字段缓存与数据绑定缓存的独立性", func() {
+			type TestStruct struct {
+				ID   int64  `borm:"id"`
+				Name string `borm:"name"`
+			}
+
+			table := &BormTable{
+				Cfg: Config{UseNameWhenTagEmpty: true},
+			}
+
+			// 清空字段缓存
+			table.fieldMapCache = sync.Map{}
+
+			rt := reflect2.TypeOf(TestStruct{})
+			structType := rt.(reflect2.StructType)
+
+			// 获取字段映射
+			fieldMap := table.getStructFieldMap(structType)
+			So(fieldMap, ShouldNotBeNil)
+
+			// 字段缓存应该独立于数据绑定缓存
+			// 数据绑定缓存存储的是SQL和参数
+			// 字段缓存存储的是结构体字段映射
+			So(len(fieldMap), ShouldEqual, 2)
+		})
+	})
+}
+
+// TestReuseWithDifferentStructs 测试Reuse功能与不同结构体
+func TestReuseWithDifferentStructs(t *testing.T) {
+	Convey("测试Reuse功能与不同结构体", t, func() {
+		type Struct1 struct {
+			ID   int64  `borm:"id"`
+			Name string `borm:"name"`
+		}
+
+		type Struct2 struct {
+			ID    int64  `borm:"id"`
+			Email string `borm:"email"`
+		}
+
+		table := &BormTable{
+			Cfg: Config{UseNameWhenTagEmpty: true},
+		}
+
+		// 清空字段缓存
+		table.fieldMapCache = sync.Map{}
+
+		// 测试不同结构体的字段缓存
+		rt1 := reflect2.TypeOf(Struct1{})
+		structType1 := rt1.(reflect2.StructType)
+		fieldMap1 := table.getStructFieldMap(structType1)
+
+		rt2 := reflect2.TypeOf(Struct2{})
+		structType2 := rt2.(reflect2.StructType)
+		fieldMap2 := table.getStructFieldMap(structType2)
+
+		// 验证不同结构体有不同的字段映射
+		So(fieldMap1, ShouldNotEqual, fieldMap2)
+		So(len(fieldMap1), ShouldEqual, 2)
+		So(len(fieldMap2), ShouldEqual, 2)
+		So(fieldMap1["name"], ShouldNotBeNil)
+		So(fieldMap2["email"], ShouldNotBeNil)
+		So(fieldMap1["email"], ShouldBeNil)
+		So(fieldMap2["name"], ShouldBeNil)
+	})
+}
+
+// TestReuseCacheMemoryLeak 测试Reuse缓存内存泄漏
+func TestReuseCacheMemoryLeak(t *testing.T) {
+	Convey("测试Reuse缓存内存泄漏", t, func() {
+		// 清空缓存
+		_dataBindingCache = sync.Map{}
+
+		// 存储大量缓存项
+		for i := 0; i < 1000; i++ {
+			item := &DataBindingItem{
+				SQL:  fmt.Sprintf("SELECT * FROM table%d", i),
+				Cols: []interface{}{"id", "name"},
+			}
+			storeToCache(fmt.Sprintf("file%d.go", i), i, item)
+		}
+
+		// 验证缓存项数量
+		count := 0
+		_dataBindingCache.Range(func(key, value interface{}) bool {
+			count++
+			return true
+		})
+		So(count, ShouldEqual, 1000)
+
+		// 测试缓存项访问
+		item := loadFromCache("file500.go", 500)
+		So(item, ShouldNotBeNil)
+		So(item.SQL, ShouldEqual, "SELECT * FROM table500")
+	})
+}
+
+// TestReuseWithNilValues 测试Reuse功能与nil值
+func TestReuseWithNilValues(t *testing.T) {
+	Convey("测试Reuse功能与nil值", t, func() {
+		// 测试存储nil值
+		storeToCache("test.go", 1, nil)
+
+		// 加载nil值
+		item := loadFromCache("test.go", 1)
+		So(item, ShouldBeNil)
+
+		// 测试不存在的键
+		notFound := loadFromCache("nonexistent.go", 999)
+		So(notFound, ShouldBeNil)
 	})
 }

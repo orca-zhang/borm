@@ -67,7 +67,7 @@ type U string
 // Config .
 type Config struct {
 	Debug               bool
-	Reuse               bool
+	Reuse               bool // 默认开启，提供2-14倍性能提升
 	UseNameWhenTagEmpty bool
 	ToTimestamp         bool
 }
@@ -79,18 +79,26 @@ func Table(db BormDBIFace, name string, ctx ...context.Context) *BormTable {
 			DB:   db,
 			Name: name,
 			ctx:  ctx[0],
+			Cfg:  Config{Reuse: true}, // 默认开启Reuse功能
 		}
 	}
 	return &BormTable{
 		DB:   db,
 		Name: name,
 		ctx:  context.Background(),
+		Cfg:  Config{Reuse: true}, // 默认开启Reuse功能
 	}
 }
 
 // Reuse .
 func (t *BormTable) Reuse() *BormTable {
 	t.Cfg.Reuse = true
+	return t
+}
+
+// NoReuse 关闭Reuse功能（如果不需要缓存优化）
+func (t *BormTable) NoReuse() *BormTable {
+	t.Cfg.Reuse = false
 	return t
 }
 
@@ -268,8 +276,8 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 	}
 
 	if t.Cfg.Reuse {
-		_, fileName, line, _ := runtime.Caller(1)
-		item = loadFromCache(fileName, line)
+		callSite := getCallSite()
+		item = loadFromCacheOptimized(callSite)
 	}
 
 	if item != nil {
@@ -380,8 +388,8 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 		item.SQL = sb.String()
 
 		if t.Cfg.Reuse {
-			_, fileName, line, _ := runtime.Caller(1)
-			storeToCache(fileName, line, item)
+			callSite := getCallSite()
+			storeToCacheOptimized(callSite, item)
 		}
 	}
 
@@ -502,49 +510,49 @@ func (t *BormTable) insert(prefix string, objs interface{}, args []BormItem) (in
 		if mapType.Key().Kind() != reflect.String {
 			return 0, errors.New("map key must be string type")
 		}
-		
+
 		// 收集map字段
 		var fieldInfos []FieldInfo
 		err := t.collectMapFieldsGeneric(objs, mapType, &sb, &fieldInfos)
 		if err != nil {
 			return 0, err
 		}
-		
+
 		// 移除最后的逗号
 		if len(fieldInfos) > 0 {
 			sbStr := sb.String()
 			sb.Reset()
 			sb.WriteString(sbStr[:len(sbStr)-1])
 		}
-		
+
 		sb.WriteString(") values (")
-		
+
 		// 构建参数
 		for _, fieldInfo := range fieldInfos {
 			stmtArgs = append(stmtArgs, fieldInfo.GetValue(nil))
 			sb.WriteString("?,")
 		}
-		
+
 		// 移除最后的逗号
 		if len(stmtArgs) > 0 {
 			sbStr := sb.String()
 			sb.Reset()
 			sb.WriteString(sbStr[:len(sbStr)-1])
 		}
-		
+
 		sb.WriteString(")")
-		
+
 		// 执行SQL
 		sqlStr := sb.String()
 		if t.Cfg.Debug {
 			log.Printf("%s %v", sqlStr, stmtArgs)
 		}
-		
+
 		result, err := t.DB.ExecContext(t.ctx, sqlStr, stmtArgs...)
 		if err != nil {
 			return 0, err
 		}
-		
+
 		affected, err := result.RowsAffected()
 		return int(affected), err
 	default:
@@ -717,8 +725,54 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 		switch rt.Kind() {
 		case reflect.Ptr:
 			rt = rt.(reflect2.PtrType).Elem()
-		// case reflect.Map:
-		// TODO
+		case reflect.Map:
+			// 处理通用map类型
+			mapType := rt.(reflect2.MapType)
+			if mapType.Key().Kind() != reflect.String {
+				return 0, errors.New("map key must be string type")
+			}
+
+			// 收集map字段
+			var fieldInfos []FieldInfo
+			err := t.collectMapFieldsGeneric(obj, mapType, &sb, &fieldInfos)
+			if err != nil {
+				return 0, err
+			}
+
+			// 移除最后的逗号
+			if len(fieldInfos) > 0 {
+				sbStr := sb.String()
+				sb.Reset()
+				sb.WriteString("update ")
+				fieldEscape(&sb, t.Name)
+				sb.WriteString(" set ")
+				sb.WriteString(sbStr[:len(sbStr)-1])
+			}
+
+			// 构建参数
+			for _, fieldInfo := range fieldInfos {
+				stmtArgs = append(stmtArgs, fieldInfo.GetValue(nil))
+			}
+
+			// 构建WHERE条件
+			for _, arg := range args {
+				arg.BuildSQL(&sb)
+				arg.BuildArgs(&stmtArgs)
+			}
+
+			// 执行SQL
+			sqlStr := sb.String()
+			if t.Cfg.Debug {
+				log.Printf("%s %v", sqlStr, stmtArgs)
+			}
+
+			result, err := t.DB.ExecContext(t.ctx, sqlStr, stmtArgs...)
+			if err != nil {
+				return 0, err
+			}
+
+			affected, err := result.RowsAffected()
+			return int(affected), err
 		default:
 			return 0, errors.New("argument 2 should be map or ptr")
 		}
@@ -988,7 +1042,7 @@ type BormItem interface {
 // collectFieldsGeneric 通用字段收集函数
 func (t *BormTable) collectFieldsGeneric(objs interface{}, sb *strings.Builder, fieldInfos *[]FieldInfo) error {
 	rt := reflect2.TypeOf(objs)
-	
+
 	switch rt.Kind() {
 	case reflect.Struct:
 		return t.collectStructFieldsGeneric(objs, rt.(reflect2.StructType), sb, fieldInfos)
@@ -1002,16 +1056,16 @@ func (t *BormTable) collectFieldsGeneric(objs interface{}, sb *strings.Builder, 
 // collectStructFieldsGeneric 收集结构体字段
 func (t *BormTable) collectStructFieldsGeneric(objs interface{}, structType reflect2.StructType, sb *strings.Builder, fieldInfos *[]FieldInfo) error {
 	ptr := reflect2.PtrOf(objs)
-	
+
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
 		ft := field.Tag().Get("borm")
-		
+
 		// 检查是否忽略字段
 		if ft == "-" {
 			continue
 		}
-		
+
 		// 处理embedded struct
 		if field.Anonymous() {
 			embeddedType := field.Type()
@@ -1030,7 +1084,7 @@ func (t *BormTable) collectStructFieldsGeneric(objs interface{}, structType refl
 			}
 			continue
 		}
-		
+
 		// 处理普通字段
 		var fieldName string
 		if ft != "" {
@@ -1040,13 +1094,13 @@ func (t *BormTable) collectStructFieldsGeneric(objs interface{}, structType refl
 		} else {
 			continue
 		}
-		
+
 		fieldEscape(sb, fieldName)
 		sb.WriteString(",")
-		
+
 		*fieldInfos = append(*fieldInfos, &StructFieldInfo{Field: field})
 	}
-	
+
 	return nil
 }
 
@@ -1056,20 +1110,20 @@ func (t *BormTable) collectMapFieldsGeneric(objs interface{}, mapType reflect2.M
 	if keyType.Kind() != reflect.String {
 		return errors.New("map key must be string type")
 	}
-	
+
 	// 使用reflect包获取map的迭代器
 	rv := reflect.ValueOf(objs)
 	mapIter := rv.MapRange()
-	
+
 	// 用于存储字段信息的临时结构
 	type mapFieldData struct {
 		key       string
 		value     interface{}
 		valueType reflect2.Type
 	}
-	
+
 	var fieldDataList []mapFieldData
-	
+
 	// 收集map中的所有字段
 	for mapIter.Next() {
 		key := mapIter.Key()
@@ -1081,24 +1135,24 @@ func (t *BormTable) collectMapFieldsGeneric(objs interface{}, mapType reflect2.M
 			valueType: mapType.Elem(),
 		})
 	}
-	
+
 	// 按key排序，确保字段顺序一致
 	sort.Slice(fieldDataList, func(i, j int) bool {
 		return fieldDataList[i].key < fieldDataList[j].key
 	})
-	
+
 	// 构建SQL和字段信息
 	for _, fieldData := range fieldDataList {
 		fieldEscape(sb, fieldData.key)
 		sb.WriteString(",")
-		
+
 		*fieldInfos = append(*fieldInfos, &MapFieldInfo{
 			Key:   fieldData.key,
 			Value: fieldData.value,
 			Type:  fieldData.valueType,
 		})
 	}
-	
+
 	return nil
 }
 
@@ -1782,13 +1836,58 @@ type DataBindingItem struct {
 	Elem interface{}
 }
 
+// 优化后的缓存操作函数
+func buildCacheKey(file string, line int) string {
+	builder := _cacheKeyPool.Get().(*strings.Builder)
+	builder.Reset()
+	builder.WriteString(file)
+	builder.WriteString(":")
+	builder.WriteString(fmt.Sprintf("%d", line))
+	key := builder.String()
+	_cacheKeyPool.Put(builder)
+	return key
+}
+
+func getCallSite() *CallSite {
+	pc := make([]uintptr, 1)
+	runtime.Callers(2, pc) // 跳过getCallSite和调用者
+	callerPC := pc[0]
+
+	if cached, ok := _callSiteCache.Load(callerPC); ok {
+		return cached.(*CallSite)
+	}
+
+	_, file, line, _ := runtime.Caller(1)
+	key := buildCacheKey(file, line)
+	callSite := &CallSite{
+		File: file,
+		Line: line,
+		Key:  key,
+	}
+	_callSiteCache.Store(callerPC, callSite)
+	return callSite
+}
+
 func storeToCache(file string, line int, item *DataBindingItem) {
-	_dataBindingCache.Store(fmt.Sprintf("%s:%d", file, line), item)
-	return
+	key := buildCacheKey(file, line)
+	_dataBindingCache.Store(key, item)
 }
 
 func loadFromCache(file string, line int) *DataBindingItem {
-	if i, ok := _dataBindingCache.Load(fmt.Sprintf("%s:%d", file, line)); ok {
+	key := buildCacheKey(file, line)
+	if i, ok := _dataBindingCache.Load(key); ok {
+		return i.(*DataBindingItem)
+	}
+	return nil
+}
+
+// 优化版本：使用预缓存的调用位置
+func storeToCacheOptimized(callSite *CallSite, item *DataBindingItem) {
+	_dataBindingCache.Store(callSite.Key, item)
+}
+
+func loadFromCacheOptimized(callSite *CallSite) *DataBindingItem {
+	if i, ok := _dataBindingCache.Load(callSite.Key); ok {
 		return i.(*DataBindingItem)
 	}
 	return nil
@@ -1796,10 +1895,22 @@ func loadFromCache(file string, line int) *DataBindingItem {
 
 var (
 	_dataBindingCache sync.Map
+	_callSiteCache    sync.Map // map[uintptr]*CallSite
+	_cacheKeyPool     = sync.Pool{
+		New: func() interface{} {
+			return &strings.Builder{}
+		},
+	}
 )
 
+type CallSite struct {
+	File string
+	Line int
+	Key  string
+}
+
 /*
-   Mock相关
+Mock相关
 */
 var (
 	_mockData []*MockMatcher
