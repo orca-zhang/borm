@@ -100,10 +100,11 @@
    </tr>
    <tr>
       <td>Map type support</td>
+      <td>Operate database with map</td>
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
-      <td>Operate database with map without defining struct</td>
+      <td>Without defining struct</td>
    </tr>
    <tr>
       <td>Testability</td>
@@ -127,13 +128,6 @@
       <td>reflect</td>
       <td>reflect</td>
       <td>borm zero use of ValueOf</td>
-   </tr>
-   <tr>
-      <td>Time parsing optimization</td>
-      <td>5.1x</td>
-      <td>1x</td>
-      <td>1x</td>
-      <td>Smart time format detection, 100% memory optimization</td>
    </tr>
 </table>
 

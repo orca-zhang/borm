@@ -101,10 +101,11 @@
    </tr>
    <tr>
       <td>Map类型支持</td>
+      <td>使用map操作数据库</td>
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
-      <td>无需定义struct，直接使用map操作数据库</td>
+      <td>无需定义struct</td>
    </tr>
    <tr>
       <td>可测试性</td>
@@ -128,13 +129,6 @@
       <td>reflect</td>
       <td>reflect</td>
       <td>borm零使用ValueOf</td>
-   </tr>
-   <tr>
-      <td>时间解析优化</td>
-      <td>5.1x</td>
-      <td>1x</td>
-      <td>1x</td>
-      <td>智能时间格式检测，100%内存优化</td>
    </tr>
 </table>
 
