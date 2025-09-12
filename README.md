@@ -624,7 +624,7 @@
 
 # 待完成
 
-- Select存储到ma- Insert/Update支持非指针类型
+- Insert/Update支持非指针类型
 - 事务相关支持
 - 联合查询
 - 连接池
