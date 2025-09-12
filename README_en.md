@@ -487,14 +487,20 @@ Option usage example:
 
 |Example|Description|
 |-|-|
-|Limit(1)|Page size 1|
-|Limit(3, 2)|Page size 3, offset position 2 **（Note the difference from MySQL）**|
+|Limit(1)|The page size is 1|
+|Limit(0, 100)|The offset position is 0 and the page size is 100|
 
-### OnConflictDoUpdateSet
+### OnDuplicateKeyUpdate
 
 |Example|Description|
 |-|-|
-|OnConflictDoUpdateSet([]string{"id"}, V{"name": "new"})|Update to resolve primary key conflicts|
+|OnDuplicateKeyUpdate(V{"name": "new"})|Update to resolve primary key conflicts|
+
+### ForceIndex
+
+|Example|Description|
+|-|-|
+|ForceIndex("idx_biz_id")|Solve the problem of poor index selectivity|
 
 ### Map Type Support
 
