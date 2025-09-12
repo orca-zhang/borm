@@ -489,13 +489,19 @@
 |示例|说明|
 |-|-|
 |Limit(1)|分页大小为1|
-|Limit(3, 2)|分页大小为3，偏移位置为2 **（注意和MySQL的区别）**|
+|Limit(0, 100)|偏移位置为0，分页大小为100|
 
-### OnConflictDoUpdateSet
+### OnDuplicateKeyUpdate
 
 |示例|说明|
 |-|-|
-|OnConflictDoUpdateSet([]string{"id"}, V{"name": "new"})|解决主键冲突的更新|
+|OnDuplicateKeyUpdate(V{"name": "new"})|解决主键冲突的更新|
+
+### ForceIndex
+
+|示例|说明|
+|-|-|
+|ForceIndex("idx_biz_id")|解决索引选择性差的问题|
 
 ### Map类型支持
 
