@@ -265,7 +265,7 @@
    n, err = t.Select(&ids, b.Fields("id"), b.Where("name = ?", name))
 
    // 可以强制索引
-   n, err = t.Select(&ids, b.Fields("id"), b.IndexedBy("idx_xxx"), b.Where("name = ?", name))
+   n, err = t.Select(&ids, b.Fields("id"), b.ForceIndex("idx_xxx"), b.Where("name = ?", name))
    ```
 
 - 更新
