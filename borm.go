@@ -39,19 +39,16 @@ const (
 	_limit
 	_onConflictDoUpdateSet
 
-	_andCondEx = iota
+	_cond = iota
+	_andCondEx
 	_orCondEx
 )
 
 const (
-	_timeLayout = "2006-01-02 15:04:05"
-)
-
-// 时间解析布局常量，避免重复字符串分配
-var (
-	timeLayoutWithNanoTZ = "2006-01-02 15:04:05.999999999 -07:00"
-	timeLayoutWithTZ     = "2006-01-02 15:04:05 -07:00"
-	timeLayoutWithZ      = "2006-01-02 15:04:05Z"
+	_timeLayout           = "2006-01-02 15:04:05"
+	_timeLayoutWithZ      = "2006-01-02 15:04:05Z"
+	_timeLayoutWithTZ     = "2006-01-02 15:04:05 -07:00"
+	_timeLayoutWithNanoTZ = "2006-01-02 15:04:05.999999999 -07:00"
 )
 
 var config struct {
@@ -79,14 +76,14 @@ func Table(db BormDBIFace, name string, ctx ...context.Context) *BormTable {
 			DB:   db,
 			Name: name,
 			ctx:  ctx[0],
-			Cfg:  Config{Reuse: true}, // 默认开启Reuse功能
+			Cfg:  Config{Reuse: true}, // 默认开启Reuse（内建形状感知）
 		}
 	}
 	return &BormTable{
 		DB:   db,
 		Name: name,
 		ctx:  context.Background(),
-		Cfg:  Config{Reuse: true}, // 默认开启Reuse功能
+		Cfg:  Config{Reuse: true}, // 默认开启Reuse（内建形状感知）
 	}
 }
 
@@ -118,6 +115,28 @@ func (t *BormTable) UseNameWhenTagEmpty() *BormTable {
 func (t *BormTable) ToTimestamp() *BormTable {
 	t.Cfg.ToTimestamp = true
 	return t
+}
+
+// SafeReuse 已合并进 Reuse，保持兼容
+func (t *BormTable) SafeReuse() *BormTable { return t.Reuse() }
+
+// NoSafeReuse 已合并进 Reuse，保持兼容
+func (t *BormTable) NoSafeReuse() *BormTable { return t }
+
+// buildShapeKey 基于调用点key和参数形状构建复用key
+func buildShapeKey(baseKey string, op string, args []BormItem) string {
+	var b strings.Builder
+	b.WriteString(baseKey)
+	b.WriteString("|")
+	b.WriteString(op)
+	for _, a := range args {
+		b.WriteString("|")
+		b.WriteString(strconv.Itoa(a.Type()))
+		var sb strings.Builder
+		a.BuildSQL(&sb)
+		b.WriteString(sb.String())
+	}
+	return b.String()
 }
 
 // Fields .
@@ -268,8 +287,9 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 				isPtrArray = true
 			}
 		}
-		// case reflect.Map:
-		// TODO
+	case reflect.Map:
+		// 直接支持map类型
+		rtElem = rt
 	default:
 		return 0, errors.New("argument 2 should be map or ptr")
 	}
@@ -284,7 +304,10 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 
 	if t.Cfg.Reuse {
 		callSite := getCallSite()
-		item = loadFromCacheOptimized(callSite)
+		shapeKey := buildShapeKey(callSite.Key, "Select", args)
+		if i, ok := _dataBindingCache.Load(shapeKey); ok {
+			item = i.(*DataBindingItem)
+		}
 	}
 
 	if item != nil {
@@ -293,10 +316,11 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			if args[0].Type() == _fields {
 				args = args[1:]
 			}
-			// map类型
-			// } else if rt.Kind() == reflect.Map {
-			// TODO
-			// 其他类型
+		} else if rtElem.Kind() == reflect.Map {
+			// map类型需要Fields，跳过缓存
+			if args[0].Type() == _fields {
+				args = args[1:]
+			}
 		} else {
 			args = args[1:]
 		}
@@ -359,10 +383,30 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 					})
 				}
 			}
-			// map类型
-			// } else if rt.Kind() == reflect.Map {
-			// TODO
-			// 其他类型
+		} else if rtElem.Kind() == reflect.Map {
+			// map类型必须指定Fields
+			if args[0].Type() != _fields {
+				return 0, errors.New("map type requires Fields() to specify columns")
+			}
+
+			fi := args[0].(*fieldsItem)
+			// 存储Fields信息到item中，供后续使用
+			item.Fields = fi.Fields
+
+			for i, field := range fi.Fields {
+				if i > 0 {
+					sb.WriteString(",")
+				}
+				fieldEscape(&sb, field)
+
+				// 为map创建interface{}类型的scanner
+				var temp interface{}
+				item.Cols = append(item.Cols, &scanner{
+					Type: reflect2.TypeOf((*interface{})(nil)).(reflect2.PtrType).Elem(),
+					Val:  unsafe.Pointer(&temp), // 临时指针，稍后会被替换
+				})
+			}
+			args = args[1:]
 		} else {
 			// 必须有fields且为1
 			if args[0].Type() != _fields {
@@ -396,7 +440,8 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 
 		if t.Cfg.Reuse {
 			callSite := getCallSite()
-			storeToCacheOptimized(callSite, item)
+			shapeKey := buildShapeKey(callSite.Key, "Select", args)
+			_dataBindingCache.Store(shapeKey, item)
 		}
 	}
 
@@ -406,14 +451,40 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 
 	if !isArray {
 		// fire
-		err := t.DB.QueryRowContext(t.ctx, item.SQL, stmtArgs...).Scan(item.Cols...)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return 0, nil
+		if rtElem.Kind() == reflect.Map {
+			// Map类型需要特殊处理
+			values := make([]interface{}, len(item.Cols))
+			for i := range values {
+				values[i] = &values[i]
 			}
-			return 0, err
+
+			err := t.DB.QueryRowContext(t.ctx, item.SQL, stmtArgs...).Scan(values...)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					return 0, nil
+				}
+				return 0, err
+			}
+
+			// 构建map
+			mapVal := reflect.MakeMap(rtElem.(reflect2.MapType).Type1())
+			for i, field := range item.Fields {
+				mapVal.SetMapIndex(reflect.ValueOf(field), reflect.ValueOf(values[i]))
+			}
+
+			// 设置到结果
+			reflect.ValueOf(res).Elem().Set(mapVal)
+			return 1, nil
+		} else {
+			err := t.DB.QueryRowContext(t.ctx, item.SQL, stmtArgs...).Scan(item.Cols...)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					return 0, nil
+				}
+				return 0, err
+			}
+			return 1, err
 		}
-		return 1, err
 	}
 
 	// fire
@@ -424,17 +495,44 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 
 	count := 0
 	for rows.Next() {
-		err = rows.Scan(item.Cols...)
-		if err != nil {
-			break
-		}
+		if rtElem.Kind() == reflect.Map {
+			// Map类型需要特殊处理
+			values := make([]interface{}, len(item.Cols))
+			for i := range values {
+				values[i] = &values[i]
+			}
 
-		if isPtrArray {
-			copyElem := rtElem.UnsafeNew()
-			rtElem.UnsafeSet(copyElem, reflect2.PtrOf(item.Elem))
-			rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), unsafe.Pointer(&copyElem))
+			err = rows.Scan(values...)
+			if err != nil {
+				break
+			}
+
+			// 构建map
+			mapVal := reflect.MakeMap(rtElem.(reflect2.MapType).Type1())
+			for i, field := range item.Fields {
+				mapVal.SetMapIndex(reflect.ValueOf(field), reflect.ValueOf(values[i]))
+			}
+
+			// 添加到slice
+			if isPtrArray {
+				rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), unsafe.Pointer(&mapVal))
+			} else {
+				// 使用reflect包来append
+				reflect.ValueOf(res).Elem().Set(reflect.Append(reflect.ValueOf(res).Elem(), mapVal))
+			}
 		} else {
-			rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), reflect2.PtrOf(item.Elem))
+			err = rows.Scan(item.Cols...)
+			if err != nil {
+				break
+			}
+
+			if isPtrArray {
+				copyElem := rtElem.UnsafeNew()
+				rtElem.UnsafeSet(copyElem, reflect2.PtrOf(item.Elem))
+				rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), unsafe.Pointer(&copyElem))
+			} else {
+				rt.(reflect2.SliceType).UnsafeAppend(reflect2.PtrOf(res), reflect2.PtrOf(item.Elem))
+			}
 		}
 		count++
 	}
@@ -489,147 +587,211 @@ func (t *BormTable) insert(prefix string, objs interface{}, args []BormItem) (in
 		sb       strings.Builder
 		stmtArgs []interface{}
 		cols     []reflect2.StructField
+
+		item *DataBindingItem
 	)
 
-	sb.WriteString(prefix)
-
-	fieldEscape(&sb, t.Name)
-
-	sb.WriteString(" (")
-
-	switch rt.Kind() {
-	case reflect.Ptr:
-		rt = rt.(reflect2.PtrType).Elem()
-		rtElem = rt
-		if rt.Kind() == reflect.Slice {
-			rtElem = rtElem.(reflect2.ListType).Elem()
-			isArray = true
-
-			if rtElem.Kind() == reflect.Ptr {
-				rtPtr = rtElem
-				rtElem = rtElem.(reflect2.PtrType).Elem()
-				isPtrArray = true
-			}
+	// Reuse缓存检查
+	if t.Cfg.Reuse {
+		callSite := getCallSite()
+		shapeKey := buildShapeKey(callSite.Key, "Insert", args)
+		if i, ok := _dataBindingCache.Load(shapeKey); ok {
+			item = i.(*DataBindingItem)
 		}
-	case reflect.Map:
-		// 处理map类型
-		mapType := rt.(reflect2.MapType)
-		keyType := mapType.Key()
+	}
 
-		// 只支持string key的map
-		if keyType.Kind() != reflect.String {
-			return 0, errors.New("map key must be string type")
-		}
-
-		// 使用通用字段收集函数处理map
-		var fieldInfos []FieldInfo
-		if err := t.collectFieldsGeneric(objs, rt, &sb, &fieldInfos); err != nil {
-			return 0, err
-		}
-
-		// 构建VALUES部分
-		sb.WriteString(") values ")
-		sb.WriteString("(")
-		for i := range fieldInfos {
-			if i > 0 {
-				sb.WriteString(",")
-			}
-			sb.WriteString("?")
-		}
-		sb.WriteString(")")
-
+	if item != nil && rtElem.Kind() == reflect.Struct {
+		// 使用缓存的SQL和字段信息
 		// 构建参数
-		for _, fieldInfo := range fieldInfos {
-			stmtArgs = append(stmtArgs, fieldInfo.GetValue(nil))
-		}
-
-		// 执行SQL
-		result, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
-		if err != nil {
-			return 0, err
-		}
-
-		affected, err := result.RowsAffected()
-		if err != nil {
-			return 0, err
-		}
-
-		return int(affected), nil
-	default:
-		return 0, errors.New("argument 2 should be map or ptr")
-	}
-
-	// Fields or None
-	// struct类型
-	if rtElem.Kind() != reflect.Struct {
-		return 0, errors.New("non-structure type not supported yet")
-	}
-
-	s := rtElem.(reflect2.StructType)
-	if len(args) > 0 && args[0].Type() == _fields {
-		m := t.getStructFieldMap(s)
-
-		for _, field := range args[0].(*fieldsItem).Fields {
-			f := m[field]
-			if f != nil {
-				cols = append(cols, f)
+		if isArray {
+			slice := rt.(reflect2.SliceType)
+			length := slice.UnsafeLengthOf(reflect2.PtrOf(objs))
+			for i := 0; i < length; i++ {
+				ptr := slice.UnsafeGetIndex(reflect2.PtrOf(objs), i)
+				for _, f := range cols {
+					var val interface{}
+					if isPtrArray {
+						val = f.UnsafeGet(ptr)
+					} else {
+						val = f.UnsafeGet(ptr)
+					}
+					stmtArgs = append(stmtArgs, val)
+				}
+			}
+		} else {
+			for _, f := range cols {
+				val := f.UnsafeGet(reflect2.PtrOf(objs))
+				stmtArgs = append(stmtArgs, val)
 			}
 		}
 
-		(args[0]).BuildSQL(&sb)
-		args = args[1:]
-
-	} else {
-		t.collectFieldsForInsert(s, &sb, &cols)
-	}
-
-	sb.WriteString(") values ")
-
-	sbTmp := &sb
-	if isArray {
-		sbTmp = &strings.Builder{}
-	}
-
-	sbTmp.WriteString("(")
-	for j := range cols {
-		if j > 0 {
-			sbTmp.WriteString(",")
+		// 处理额外的args
+		for _, arg := range args {
+			arg.BuildSQL(&sb)
+			arg.BuildArgs(&stmtArgs)
 		}
-		sbTmp.WriteString("?")
-	}
-	sbTmp.WriteString(")")
+	} else {
+		// 构建SQL和字段信息
+		item = &DataBindingItem{Type: rtElem}
 
-	// inputArgs objs
-	if isArray {
-		// 数组
-		for i := 0; i < rt.(reflect2.SliceType).UnsafeLengthOf(reflect2.PtrOf(objs)); i++ {
-			if i > 0 {
-				sb.WriteString(",")
+		sb.WriteString(prefix)
+		fieldEscape(&sb, t.Name)
+		sb.WriteString(" (")
+
+		switch rt.Kind() {
+		case reflect.Ptr:
+			rt = rt.(reflect2.PtrType).Elem()
+			rtElem = rt
+			if rt.Kind() == reflect.Slice {
+				rtElem = rtElem.(reflect2.ListType).Elem()
+				isArray = true
+
+				if rtElem.Kind() == reflect.Ptr {
+					rtPtr = rtElem
+					rtElem = rtElem.(reflect2.PtrType).Elem()
+					isPtrArray = true
+				}
 			}
-			sb.WriteString(sbTmp.String())
-			t.inputArgs(&stmtArgs, cols, rtPtr, s, isPtrArray, rt.(reflect2.ListType).UnsafeGetIndex(reflect2.PtrOf(objs), i))
-		}
-	} else {
-		// 普通元素
-		t.inputArgs(&stmtArgs, cols, rtPtr, s, false, reflect2.PtrOf(objs))
-	}
+		case reflect.Map:
+			// 处理map类型
+			mapType := rt.(reflect2.MapType)
+			keyType := mapType.Key()
 
-	// on duplicate key update
-	for _, arg := range args {
-		arg.BuildSQL(&sb)
-		arg.BuildArgs(&stmtArgs)
+			// 只支持string key的map
+			if keyType.Kind() != reflect.String {
+				return 0, errors.New("map key must be string type")
+			}
+
+			// 使用通用字段收集函数处理map
+			var fieldInfos []FieldInfo
+			if err := t.collectFieldsGeneric(objs, rt, &sb, &fieldInfos); err != nil {
+				return 0, err
+			}
+
+			// 构建VALUES部分
+			sb.WriteString(") values ")
+			sb.WriteString("(")
+			for i := range fieldInfos {
+				if i > 0 {
+					sb.WriteString(",")
+				}
+				sb.WriteString("?")
+			}
+			sb.WriteString(")")
+
+			// 构建参数
+			for _, fieldInfo := range fieldInfos {
+				stmtArgs = append(stmtArgs, fieldInfo.GetValue(nil))
+			}
+
+			// 处理额外的args
+			for _, arg := range args {
+				arg.BuildSQL(&sb)
+				arg.BuildArgs(&stmtArgs)
+			}
+
+			// 执行SQL
+			result, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
+			if err != nil {
+				return 0, err
+			}
+
+			affected, err := result.RowsAffected()
+			if err != nil {
+				return 0, err
+			}
+
+			return int(affected), nil
+		default:
+			return 0, errors.New("argument 2 should be map or ptr")
+		}
+
+		// Fields or None
+		// struct类型
+		if rtElem.Kind() != reflect.Struct {
+			return 0, errors.New("non-structure type not supported yet")
+		}
+
+		s := rtElem.(reflect2.StructType)
+		if len(args) > 0 && args[0].Type() == _fields {
+			m := t.getStructFieldMap(s)
+
+			for _, field := range args[0].(*fieldsItem).Fields {
+				f := m[field]
+				if f != nil {
+					cols = append(cols, f)
+				}
+			}
+
+			(args[0]).BuildSQL(&sb)
+			args = args[1:]
+
+		} else {
+			t.collectFieldsForInsert(s, &sb, &cols)
+		}
+
+		sb.WriteString(") values ")
+
+		sbTmp := &sb
+		if isArray {
+			sbTmp = &strings.Builder{}
+		}
+
+		sbTmp.WriteString("(")
+		for j := range cols {
+			if j > 0 {
+				sbTmp.WriteString(",")
+			}
+			sbTmp.WriteString("?")
+		}
+		sbTmp.WriteString(")")
+
+		// inputArgs objs
+		if isArray {
+			// 数组
+			for i := 0; i < rt.(reflect2.SliceType).UnsafeLengthOf(reflect2.PtrOf(objs)); i++ {
+				if i > 0 {
+					sb.WriteString(",")
+				}
+				sb.WriteString(sbTmp.String())
+				t.inputArgs(&stmtArgs, cols, rtPtr, s, isPtrArray, rt.(reflect2.ListType).UnsafeGetIndex(reflect2.PtrOf(objs), i))
+			}
+		} else {
+			// 普通元素
+			t.inputArgs(&stmtArgs, cols, rtPtr, s, false, reflect2.PtrOf(objs))
+		}
+
+		// on duplicate key update
+		for _, arg := range args {
+			arg.BuildSQL(&sb)
+			arg.BuildArgs(&stmtArgs)
+		}
+
+		item.SQL = sb.String()
+		item.Cols = make([]interface{}, len(cols))
+		for i, f := range cols {
+			item.Cols[i] = f
+		}
+
+		// 存储到缓存
+		if t.Cfg.Reuse {
+			callSite := getCallSite()
+			shapeKey := buildShapeKey(callSite.Key, "Insert", args)
+			_dataBindingCache.Store(shapeKey, item)
+		}
 	}
 
 	if t.Cfg.Debug {
-		log.Println(sb.String(), stmtArgs)
+		log.Println(item.SQL, stmtArgs)
 	}
 
-	res, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
+	res, err := t.DB.ExecContext(t.ctx, item.SQL, stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
 
-	if !isArray {
+	if !isArray && rtElem.Kind() == reflect.Struct {
+		s := rtElem.(reflect2.StructType)
 		if f := s.FieldByName("BormLastId"); f != nil {
 			id, _ := res.LastInsertId()
 			f.UnsafeSet(reflect2.PtrOf(objs), reflect2.PtrOf(id))
@@ -653,23 +815,98 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 		return 0, errors.New("argument 2 cannot be omitted")
 	}
 
-	var sb strings.Builder
-	sb.WriteString("update ")
-	fieldEscape(&sb, t.Name)
-	sb.WriteString(" set ")
+	var (
+		sb       strings.Builder
+		stmtArgs []interface{}
+		item     *DataBindingItem
+	)
 
-	var stmtArgs []interface{}
+	// Reuse缓存检查
+	if t.Cfg.Reuse {
+		callSite := getCallSite()
+		shapeKey := buildShapeKey(callSite.Key, "Update", args)
+		if i, ok := _dataBindingCache.Load(shapeKey); ok {
+			item = i.(*DataBindingItem)
+		}
+	}
 
-	if m, ok := obj.(V); ok {
-		if args[0].Type() == _fields {
-			argCnt := 0
-			for _, field := range args[0].(*fieldsItem).Fields {
+	if item != nil {
+		// 使用缓存的SQL
+		// 构建参数
+		if m, ok := obj.(V); ok {
+			// Map类型
+			for _, field := range item.Fields {
 				v := m[field]
 				if v != nil {
+					if _, ok := v.(U); ok {
+						// U类型不需要参数
+					} else {
+						stmtArgs = append(stmtArgs, v)
+					}
+				}
+			}
+		} else {
+			// Struct类型
+			rt := reflect2.TypeOf(obj)
+			if rt.Kind() != reflect.Ptr {
+				return 0, errors.New("update requires pointer to struct")
+			}
+			rt = rt.(reflect2.PtrType).Elem()
+			if rt.Kind() == reflect.Struct {
+				s := rt.(reflect2.StructType)
+				cols := make([]reflect2.StructField, len(item.Cols))
+				for i, f := range item.Cols {
+					cols[i] = f.(reflect2.StructField)
+				}
+				t.inputArgs(&stmtArgs, cols, nil, s, false, reflect2.PtrOf(obj))
+			} else {
+				return 0, errors.New("non-structure type not supported yet")
+			}
+		}
+
+		// 处理Where条件
+		for _, arg := range args {
+			arg.BuildArgs(&stmtArgs)
+		}
+	} else {
+		// 构建SQL和字段信息
+		item = &DataBindingItem{Type: reflect2.TypeOf(obj)}
+
+		sb.WriteString("update ")
+		fieldEscape(&sb, t.Name)
+		sb.WriteString(" set ")
+
+		// 处理SET部分
+		if m, ok := obj.(V); ok {
+			// Map类型处理
+			if args[0].Type() == _fields {
+				argCnt := 0
+				for _, field := range args[0].(*fieldsItem).Fields {
+					v := m[field]
+					if v != nil {
+						if argCnt > 0 {
+							sb.WriteString(",")
+						}
+						fieldEscape(&sb, field)
+						if s, ok := v.(U); ok {
+							sb.WriteString("=")
+							sb.WriteString(string(s))
+						} else {
+							sb.WriteString("=?")
+							stmtArgs = append(stmtArgs, v)
+						}
+						argCnt++
+					}
+				}
+				item.Fields = args[0].(*fieldsItem).Fields
+				args = args[1:]
+			} else {
+				argCnt := 0
+				for k, v := range m {
 					if argCnt > 0 {
 						sb.WriteString(",")
 					}
-					fieldEscape(&sb, field)
+					fieldEscape(&sb, k)
 					if s, ok := v.(U); ok {
 						sb.WriteString("=")
 						sb.WriteString(string(s))
@@ -680,143 +917,114 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 					argCnt++
 				}
 			}
-
-			args = args[1:]
-
 		} else {
-			argCnt := 0
-			for k, v := range m {
-				if argCnt > 0 {
-					sb.WriteString(",")
-				}
-				fieldEscape(&sb, k)
-				if s, ok := v.(U); ok {
-					sb.WriteString("=")
-					sb.WriteString(string(s))
-				} else {
-					sb.WriteString("=?")
-					stmtArgs = append(stmtArgs, v)
-				}
-				argCnt++
+			// Struct类型处理
+			rt := reflect2.TypeOf(obj)
+			if rt.Kind() != reflect.Ptr {
+				return 0, errors.New("update requires pointer to struct")
 			}
-		}
-	} else {
-		rt := reflect2.TypeOf(obj)
-
-		switch rt.Kind() {
-		case reflect.Ptr:
 			rt = rt.(reflect2.PtrType).Elem()
-		case reflect.Map:
-			// 处理通用map类型
-			mapType := rt.(reflect2.MapType)
-			if mapType.Key().Kind() != reflect.String {
-				return 0, errors.New("map key must be string type")
-			}
-
-			// 使用通用字段收集函数处理map
-			var fieldInfos []FieldInfo
-			if err := t.collectFieldsGeneric(obj, rt, &sb, &fieldInfos); err != nil {
-				return 0, err
-			}
-
-			// 构建参数
-			for _, fieldInfo := range fieldInfos {
-				if mapFieldInfo, ok := fieldInfo.(*MapFieldInfo); ok {
-					stmtArgs = append(stmtArgs, mapFieldInfo.GetValue(nil))
+			if rt.Kind() == reflect.Struct {
+				s := rt.(reflect2.StructType)
+				// 如果传入了 Fields(...)，仅更新这些字段，并消费该参数
+				if len(args) > 0 && args[0].Type() == _fields {
+					m := t.getStructFieldMap(s)
+					fields := args[0].(*fieldsItem).Fields
+					for i, name := range fields {
+						f := m[name]
+						if i > 0 {
+							sb.WriteString(",")
+						}
+						fieldEscape(&sb, name)
+						sb.WriteString("=?")
+						val := f.Get(s.PackEFace(reflect2.PtrOf(obj)))
+						if f.Type().String() == "time.Time" {
+							if t.Cfg.ToTimestamp {
+								val = val.(*time.Time).UTC().Unix()
+							} else {
+								val = val.(*time.Time).UTC().Format(_timeLayout)
+							}
+						}
+						stmtArgs = append(stmtArgs, val)
+					}
+					item.Fields = fields
+					args = args[1:]
 				} else {
-					// 对于struct字段，这里需要从实际对象中获取值
-					// 暂时跳过，因为Update函数中map类型不需要struct字段
-					continue
+					argCnt := 0
+					for i := 0; i < s.NumField(); i++ {
+						f := s.Field(i)
+						ft := f.Tag().Get("borm")
+						if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
+							continue
+						}
+						if ft == "-" {
+							continue
+						}
+						if argCnt > 0 {
+							sb.WriteString(",")
+						}
+						if ft == "" {
+							fieldEscape(&sb, f.Name())
+						} else {
+							fieldEscape(&sb, ft)
+						}
+						sb.WriteString("=?")
+						val := f.Get(s.PackEFace(reflect2.PtrOf(obj)))
+						if f.Type().String() == "time.Time" {
+							if t.Cfg.ToTimestamp {
+								val = val.(*time.Time).UTC().Unix()
+							} else {
+								val = val.(*time.Time).UTC().Format(_timeLayout)
+							}
+						}
+						stmtArgs = append(stmtArgs, val)
+						argCnt++
+					}
+					item.Fields = make([]string, argCnt)
+					idx := 0
+					for i := 0; i < s.NumField(); i++ {
+						f := s.Field(i)
+						ft := f.Tag().Get("borm")
+						if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
+							continue
+						}
+						if ft == "-" {
+							continue
+						}
+						if ft == "" {
+							item.Fields[idx] = f.Name()
+						} else {
+							item.Fields[idx] = ft
+						}
+						idx++
+					}
 				}
-			}
-
-			// 处理后续参数
-			for _, arg := range args {
-				arg.BuildArgs(&stmtArgs)
-			}
-
-			// 执行更新
-			result, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
-			if err != nil {
-				return 0, err
-			}
-
-			rowsAffected, err := result.RowsAffected()
-			if err != nil {
-				return 0, err
-			}
-
-			return int(rowsAffected), nil
-		default:
-			return 0, errors.New("argument 2 should be map or ptr")
-		}
-
-		var cols []reflect2.StructField
-
-		// Fields or None
-		// struct类型
-		if rt.Kind() != reflect.Struct {
-			return 0, errors.New("non-structure type not supported yet")
-		}
-
-		// Fields or KeyVals or None
-		s := rt.(reflect2.StructType)
-		if args[0].Type() == _fields {
-			m := t.getStructFieldMap(s)
-
-			for i, field := range args[0].(*fieldsItem).Fields {
-				f := m[field]
-				if f != nil {
-					cols = append(cols, f)
-				}
-
-				if i > 0 {
-					sb.WriteString(",")
-				}
-				fieldEscape(&sb, field)
-				sb.WriteString("=?")
-			}
-
-			args = args[1:]
-
-		} else {
-			for i := 0; i < s.NumField(); i++ {
-				f := s.Field(i)
-				ft := f.Tag().Get("borm")
-
-				if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
-					continue
-				}
-
-				if len(cols) > 0 {
-					sb.WriteString(",")
-				}
-
-				if ft == "" {
-					fieldEscape(&sb, f.Name())
-					sb.WriteString("=?")
-				} else {
-					fieldEscape(&sb, ft)
-					sb.WriteString("=?")
-				}
-
-				cols = append(cols, f)
+			} else {
+				return 0, errors.New("non-structure type not supported yet")
 			}
 		}
 
-		t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(obj))
-	}
+		// 处理Where条件
+		for _, arg := range args {
+			arg.BuildSQL(&sb)
+			arg.BuildArgs(&stmtArgs)
+		}
 
-	for _, arg := range args {
-		arg.BuildSQL(&sb)
-		arg.BuildArgs(&stmtArgs)
+		item.SQL = sb.String()
+
+		// 存储到缓存
+		if t.Cfg.Reuse {
+			callSite := getCallSite()
+			shapeKey := buildShapeKey(callSite.Key, "Update", args)
+			_dataBindingCache.Store(shapeKey, item)
+		}
 	}
 
 	if t.Cfg.Debug {
-		log.Println(sb.String(), stmtArgs)
+		log.Println(item.SQL, stmtArgs)
 	}
 
-	res, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
+	res, err := t.DB.ExecContext(t.ctx, item.SQL, stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -838,22 +1046,54 @@ func (t *BormTable) Delete(args ...BormItem) (int, error) {
 		}
 	}
 
-	var sb strings.Builder
-	sb.WriteString("delete from ")
-	fieldEscape(&sb, t.Name)
+	var (
+		sb       strings.Builder
+		stmtArgs []interface{}
+		item     *DataBindingItem
+	)
 
-	var stmtArgs []interface{}
+	// Reuse缓存检查
+	if t.Cfg.Reuse {
+		callSite := getCallSite()
+		shapeKey := buildShapeKey(callSite.Key, "Delete", args)
+		if i, ok := _dataBindingCache.Load(shapeKey); ok {
+			item = i.(*DataBindingItem)
+		}
+	}
 
-	for _, arg := range args {
-		arg.BuildSQL(&sb)
-		arg.BuildArgs(&stmtArgs)
+	if item != nil {
+		// 使用缓存的SQL
+		// 构建参数
+		for _, arg := range args {
+			arg.BuildArgs(&stmtArgs)
+		}
+	} else {
+		// 构建SQL
+		item = &DataBindingItem{Type: nil}
+
+		sb.WriteString("delete from ")
+		fieldEscape(&sb, t.Name)
+
+		for _, arg := range args {
+			arg.BuildSQL(&sb)
+			arg.BuildArgs(&stmtArgs)
+		}
+
+		item.SQL = sb.String()
+
+		// 存储到缓存
+		if t.Cfg.Reuse {
+			callSite := getCallSite()
+			shapeKey := buildShapeKey(callSite.Key, "Delete", args)
+			_dataBindingCache.Store(shapeKey, item)
+		}
 	}
 
 	if t.Cfg.Debug {
-		log.Println(sb.String(), stmtArgs)
+		log.Println(item.SQL, stmtArgs)
 	}
 
-	res, err := t.DB.ExecContext(t.ctx, sb.String(), stmtArgs...)
+	res, err := t.DB.ExecContext(t.ctx, item.SQL, stmtArgs...)
 	if err != nil {
 		return 0, err
 	}
@@ -1263,8 +1503,7 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 			sb.WriteString(" and ")
 		}
 		if cond, ok := c.(*ormCond); ok {
-			fieldEscape(sb, cond.Field)
-			sb.WriteString(cond.Op)
+			cond.BuildSQL(sb)
 		} else if condEx, ok := c.(*ormCondEx); ok {
 			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(w.Conds) > 1 {
 				sb.WriteString("(")
@@ -1327,8 +1566,7 @@ func (h *havingItem) BuildSQL(sb *strings.Builder) {
 			sb.WriteString(" and ")
 		}
 		if cond, ok := c.(*ormCond); ok {
-			fieldEscape(sb, cond.Field)
-			sb.WriteString(cond.Op)
+			cond.BuildSQL(sb)
 		} else if condEx, ok := c.(*ormCondEx); ok {
 			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(h.Conds) > 1 {
 				sb.WriteString("(")
@@ -1482,16 +1720,16 @@ func parseTimeString(s string) (time.Time, error) {
 			if len(s) > 10 && s[10] == 'T' {
 				layout = time.RFC3339Nano // 2006-01-02T15:04:05.999999999Z07:00
 			} else {
-				layout = "2006-01-02 15:04:05.999999999Z07:00"
+				layout = _timeLayoutWithNanoTZ
 			}
 		} else {
 			// 带时区但无毫秒的格式
 			if len(s) > 10 && s[10] == 'T' {
 				layout = time.RFC3339 // 2006-01-02T15:04:05Z07:00
 			} else if s[len(s)-1] == 'Z' {
-				layout = "2006-01-02 15:04:05Z"
+				layout = _timeLayoutWithZ
 			} else {
-				layout = "2006-01-02 15:04:05Z07:00"
+				layout = _timeLayoutWithTZ
 			}
 		}
 	} else {
@@ -1722,6 +1960,21 @@ type ormCond struct {
 	Args  []interface{}
 }
 
+func (c *ormCond) Type() int {
+	return _cond
+}
+
+func (c *ormCond) BuildSQL(sb *strings.Builder) {
+	if c.Field != "" {
+		fieldEscape(sb, c.Field)
+	}
+	sb.WriteString(c.Op)
+}
+
+func (c *ormCond) BuildArgs(stmtArgs *[]interface{}) {
+	*stmtArgs = append(*stmtArgs, c.Args...)
+}
+
 type ormCondEx struct {
 	Ty    int
 	Conds []interface{}
@@ -1742,8 +1995,7 @@ func (cx *ormCondEx) BuildSQL(sb *strings.Builder) {
 			}
 		}
 		if cond, ok := c.(*ormCond); ok {
-			fieldEscape(sb, cond.Field)
-			sb.WriteString(cond.Op)
+			cond.BuildSQL(sb)
 		} else if condEx, ok := c.(*ormCondEx); ok {
 			if len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
 				sb.WriteString("(")
@@ -1873,12 +2125,12 @@ RETRY:
 // DataBindingItem .
 
 type DataBindingItem struct {
-	SQL  string
-	Cols []interface{}
-	Type reflect2.Type
-	Elem interface{}
+	SQL    string
+	Cols   []interface{}
+	Type   reflect2.Type
+	Elem   interface{}
+	Fields []string // 用于Map类型的字段名
 }
-
 
 var _dataBindingCache sync.Map
 
@@ -2029,11 +2281,11 @@ func getCallSite() *CallSite {
 	pc := make([]uintptr, 1)
 	runtime.Callers(2, pc) // 跳过getCallSite和调用者
 	callerPC := pc[0]
-	
+
 	if cached, ok := _callSiteCache.Load(callerPC); ok {
 		return cached.(*CallSite)
 	}
-	
+
 	_, file, line, _ := runtime.Caller(1)
 	key := buildCacheKey(file, line)
 	callSite := &CallSite{
@@ -2071,8 +2323,8 @@ func loadFromCacheOptimized(callSite *CallSite) *DataBindingItem {
 }
 
 var (
-	_callSiteCache    sync.Map // map[uintptr]*CallSite
-	_cacheKeyPool     = sync.Pool{
+	_callSiteCache sync.Map // map[uintptr]*CallSite
+	_cacheKeyPool  = sync.Pool{
 		New: func() interface{} {
 			return &strings.Builder{}
 		},

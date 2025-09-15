@@ -264,6 +264,17 @@
    n, err = t.Select(&ids, b.Fields("id"), b.IndexedBy("idx_xxx"), b.Where("name = ?", name))
    ```
 
+- Select to Map (no struct needed)
+  ``` golang
+  // single row to map
+  var m map[string]interface{}
+  n, err := t.Select(&m, b.Fields("id", "name", "age"), b.Where(b.Eq("id", 1)))
+
+  // multiple rows to []map
+  var ms []map[string]interface{}
+  n, err = t.Select(&ms, b.Fields("id", "name", "age"), b.Where(b.Gt("age", 18)))
+  ```
+
 - Update
    ``` golang
    // o can be object/slice/ptr slice
@@ -284,6 +295,21 @@
 
    n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)))
    ```
+
+- CRUD with Reuse (enabled by default)
+  ``` golang
+  // Reuse is on by default; repeated calls at the same call-site reuse SQL/metadata
+  // Update example
+  type User struct { ID int64 `borm:"id"`; Name string `borm:"name"`; Age int `borm:"age"` }
+  for _, u := range users {
+      _, _ = t.Update(&u, b.Fields("name", "age"), b.Where(b.Eq("id", u.ID)))
+  }
+
+  // Insert example
+  for _, u := range users {
+      _, _ = t.Insert(&u)
+  }
+  ```
 
 - Delete
    ``` golang
@@ -410,7 +436,7 @@
 |Option|Description|
 |-|-|
 |Debug|Print SQL statements|
-|Reuse|Reuse SQL and storage based on call location (**enabled by default**, providing 2-14x performance improvement)|
+|Reuse|Reuse SQL and storage based on call location (**enabled by default**, 2-14x improvement). Shape-aware multi-shape cache is built-in|
 |NoReuse|Disable Reuse functionality (not recommended, will reduce performance)|
 |UseNameWhenTagEmpty|Use field names without borm tag as database fields to fetch|
 |ToTimestamp|Use timestamp for Insert, not formatted string|
@@ -424,6 +450,9 @@ Option usage example:
    // Reuse functionality is enabled by default, no manual call needed
    // If you need to disable it (not recommended), you can call:
    n, err = t.NoReuse().Insert(&o)
+
+   // Reuse is shape-aware by default: guards against SQL shape changes at the same call-site
+   n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)))
    ```
 
 ### Where

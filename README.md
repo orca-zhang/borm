@@ -265,6 +265,17 @@
    n, err = t.Select(&ids, b.Fields("id"), b.IndexedBy("idx_xxx"), b.Where("name = ?", name))
    ```
 
+- Select 到 Map（无需定义 struct）
+  ``` golang
+  // 单行映射到 map
+  var m map[string]interface{}
+  n, err := t.Select(&m, b.Fields("id", "name", "age"), b.Where(b.Eq("id", 1)))
+
+  // 多行映射到 []map
+  var ms []map[string]interface{}
+  n, err = t.Select(&ms, b.Fields("id", "name", "age"), b.Where(b.Gt("age", 18)))
+  ```
+
 - 更新
    ``` golang
    // o可以是对象/slice/ptr slice
@@ -285,6 +296,21 @@
 
    n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)))
    ```
+
+- CRUD 配合 Reuse（默认开启）
+  ``` golang
+  // Reuse 默认开启；同一调用点重复调用会复用 SQL/元数据
+  // Update 示例
+  type User struct { ID int64 `borm:"id"`; Name string `borm:"name"`; Age int `borm:"age"` }
+  for _, u := range users {
+      _, _ = t.Update(&u, b.Fields("name", "age"), b.Where(b.Eq("id", u.ID)))
+  }
+
+  // Insert 示例
+  for _, u := range users {
+      _, _ = t.Insert(&u)
+  }
+  ```
 
 - 删除
    ``` golang
@@ -411,7 +437,7 @@
 |选项|说明|
 |-|-|
 |Debug|打印sql语句|
-|Reuse|根据调用位置复用sql和存储方式（**默认开启**，提供2-14倍性能提升）|
+|Reuse|根据调用位置复用sql和存储方式（**默认开启**，提供2-14倍性能提升）。内建形状感知与多形状缓存|
 |NoReuse|关闭Reuse功能（不推荐，会降低性能）|
 |UseNameWhenTagEmpty|用未设置borm tag的字段名本身作为待获取的db字段|
 |ToTimestamp|调用Insert时，使用时间戳，而非格式化字符串|
@@ -425,6 +451,9 @@
    // Reuse功能默认开启，无需手动调用
    // 如需关闭（不推荐），可调用：
    n, err = t.NoReuse().Insert(&o)
+
+   // Reuse 内建形状守卫：当同一调用点的 SQL 形状（Fields/Where/IN 占位符个数等）可能变化时，自动防止错误复用
+   n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)))
    ```
 
 ### Where
