@@ -2,7 +2,6 @@
 
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/borm/blob/master/LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/orca-zhang/borm)](https://goreportcard.com/report/github.com/orca-zhang/borm)
-[![Build Status](https://orca-zhang.semaphoreci.com/badges/borm.svg?style=shields)](https://orca-zhang.semaphoreci.com/projects/borm)
 [![codecov](https://codecov.io/gh/orca-zhang/borm/branch/master/graph/badge.svg)](https://codecov.io/gh/orca-zhang/borm)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Forca-zhang%2Fborm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Forca-zhang%2Fborm?ref=badge_shield)
 
@@ -22,6 +21,7 @@
 - **No struct definition needed**: Directly operate database with map
 - **Type Safety**: Support all basic types and complex types
 - **Complete CRUD**: Support Insert, Update, Select, Delete operations
+- **Select to Map**: Support querying results directly to map, flexible handling of dynamic fields
 
 ## 🏗️ Embedded Struct Support
 - **Automatic composite object handling**: No manual handling of nested structures
@@ -54,12 +54,8 @@
    - Try to keep it simple, map one operation to one model!
 - **Other advantages**:
   - More natural where conditions (only add parentheses when needed, compared to gorm)
-  - In operation accepts various types of slices, and converts single element to Equal operation
+  - In operation accepts various types of slices
   - Migration from other ORM libraries requires no historical code modification, non-invasive modification
-  - **Support map types, operate database without defining struct**
-  - **Support embedded struct, automatically handle composite objects**
-  - **Support borm tag "-" field ignore functionality**
-  - **Reuse functionality enabled by default, providing 2-14x performance improvement**
 
 # Feature Matrix
 
@@ -125,11 +121,11 @@
    </tr>
    <tr>
       <td>Map type support</td>
-      <td>Operate database with map</td>
+      <td>Operate database with map, support Select to Map</td>
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
-      <td>Without defining struct</td>
+      <td>Without defining struct, flexible handling of dynamic fields</td>
    </tr>
    <tr>
       <td>Testability</td>
@@ -461,7 +457,7 @@ Option usage example:
 |Between|Between("id", start, end)|Three parameters, between start and end|
 |Like|Like("name", "x%")|Two parameters, name like "x%"|
 |GLOB|GLOB("name", "?x*")|Two parameters, name glob "?x*"|
-|Multiple value selection|In("id", ids)|Two parameters, ids is basic type slice, single element slice converts to Eq|
+|Multiple value selection|In("id", ids)|Two parameters, ids is basic type slice, unified use of in (?) format for cache consistency|
 
 ### GroupBy
 
@@ -508,6 +504,8 @@ Option usage example:
 |-|-|
 |Insert(map[string]interface{}{"name": "John", "age": 30})|Use map to insert data|
 |Update(map[string]interface{}{"name": "John Updated", "age": 31})|Use map to update data|
+|var m map[string]interface{}; Select(&m, Fields("id","name"))|Query single record to map|
+|var ms []map[string]interface{}; Select(&ms, Fields("id","name"))|Query multiple records to map slice|
 |Support all CRUD operations|Select, Insert, Update, Delete all support map|
 
 ### Embedded Struct Support
@@ -593,23 +591,30 @@ In the `x.test` method querying `tbl` data, we need to mock database operations
 
 ## Reuse Function Performance Optimization (Enabled by Default)
 
-### Benchmark Results
+### Latest Benchmark Results
 ```
-ReuseOff:     505.9 ns/op    656 B/op    10 allocs/op
-ReuseOn_Hit:  254.3 ns/op      0 B/op     0 allocs/op
-ReuseOn_Miss: 354.6 ns/op    224 B/op     5 allocs/op
-ReuseOn_Mixed: 202.7 ns/op   48 B/op     4 allocs/op
+SQL Building Performance Comparison:
+With Reuse:    14.42 ns/op    0 B/op     0 allocs/op
+Without Reuse: 69.73 ns/op    120 B/op   4 allocs/op
+
+Historical Test Results:
+ReuseOff:      505.9 ns/op    656 B/op    10 allocs/op
+ReuseOn_Hit:   254.3 ns/op      0 B/op     0 allocs/op
+ReuseOn_Miss:  354.6 ns/op    224 B/op     5 allocs/op
+ReuseOn_Mixed: 202.7 ns/op    48 B/op     4 allocs/op
 ```
 
 ### Performance Improvement Multipliers
+- **SQL Building Optimization**: **4.8x** (69.73ns → 14.42ns)
 - **Cache hit scenario**: **2.0x** (505.9ns → 254.3ns)
 - **Cache miss scenario**: **1.4x** (505.9ns → 354.6ns)
 - **Mixed scenario**: **2.5x** (505.9ns → 202.7ns)
 - **Concurrent scenario**: **14.2x** (33.39ns → 2.344ns)
 
 ### Memory Optimization Effects
+- **SQL Building Memory**: **100% reduction** (120B → 0B, cache hit)
 - **Single operation memory**: **100% reduction** (96B → 0B, cache hit)
-- **Memory allocation**: **100% reduction** (2 times → 0 times, cache hit)
+- **Memory allocation**: **100% reduction** (4 times → 0 times, cache hit)
 - **Overall memory usage**: **54% reduction** (36.37ns → 16.76ns)
 
 ### Technical Implementation
@@ -617,6 +622,7 @@ ReuseOn_Mixed: 202.7 ns/op   48 B/op     4 allocs/op
 - **String building optimization**: Use `sync.Pool` to reuse `strings.Builder`
 - **Cache key pre-computation**: Avoid repeated string concatenation
 - **Zero allocation design**: Complete zero memory allocation on cache hit
+- **In function optimization**: Unified use of `in (?)` format, avoiding cache inconsistency issues
 
 ## Time Parsing Optimization
 - **Before optimization**: Using loop to try multiple time formats

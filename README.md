@@ -3,7 +3,6 @@
 
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/borm/blob/master/LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/orca-zhang/borm)](https://goreportcard.com/report/github.com/orca-zhang/borm)
-[![Build Status](https://orca-zhang.semaphoreci.com/badges/borm.svg?style=shields)](https://orca-zhang.semaphoreci.com/projects/borm)
 [![codecov](https://codecov.io/gh/orca-zhang/borm/branch/master/graph/badge.svg)](https://codecov.io/gh/orca-zhang/borm)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Forca-zhang%2Fborm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Forca-zhang%2Fborm?ref=badge_shield)
 
@@ -23,6 +22,7 @@
 - **无需定义struct**：直接使用map操作数据库
 - **类型安全**：支持所有基本类型和复杂类型
 - **完整CRUD**：支持Insert、Update、Select、Delete操作
+- **Select到Map**：支持查询结果直接存储到map，灵活处理动态字段
 
 ## 🏗️ Embedded Struct支持
 - **自动处理组合对象**：无需手动处理嵌套结构
@@ -55,12 +55,8 @@
    - 尽量保持简单把一个操作映射一个model吧！
 - 其他优点：
   - 更自然的where条件（仅在需要加括号时添加，对比gorm）
-  - In操作接受各种类型slice，并且单元素时转成Equal操作
+  - In操作接受各种类型slice
   - 从其他orm库迁移无需修改历史代码，无侵入性修改
-  - **支持map类型，无需定义struct即可操作数据库**
-  - **支持embedded struct，自动处理组合对象**
-  - **支持borm tag为"-"的字段忽略功能**
-  - **默认开启Reuse功能，提供2-14倍性能提升**
 
 # 特性矩阵
 
@@ -126,11 +122,11 @@
    </tr>
    <tr>
       <td>Map类型支持</td>
-      <td>使用map操作数据库</td>
+      <td>使用map操作数据库，支持Select到Map</td>
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
-      <td>无需定义struct</td>
+      <td>无需定义struct，灵活处理动态字段</td>
    </tr>
    <tr>
       <td>可测试性</td>
@@ -462,7 +458,7 @@
 |在...之间|Between("id", start, end)|三个参数，在start和end之间|
 |近似|Like("name", "x%")|两个参数，name like "x%"|
 |近似|GLOB("name", "?x*")|两个参数，name glob "?x*"|
-|多值选择|In("id", ids)|两个参数，ids是基础类型的slice，slice只有1个元素会转化成Eq|
+|多值选择|In("id", ids)|两个参数，ids是基础类型的slice|
 
 ### GroupBy
 
@@ -509,6 +505,8 @@
 |-|-|
 |Insert(map[string]interface{}{"name": "John", "age": 30})|使用map插入数据|
 |Update(map[string]interface{}{"name": "John Updated", "age": 31})|使用map更新数据|
+|var m map[string]interface{}; Select(&m, Fields("id","name"))|查询单条记录到map|
+|var ms []map[string]interface{}; Select(&ms, Fields("id","name"))|查询多条记录到map切片|
 |支持所有CRUD操作|Select、Insert、Update、Delete都支持map|
 
 ### Embedded Struct支持
@@ -594,23 +592,30 @@
 
 ## Reuse功能性能优化（默认开启）
 
-### 基准测试结果
+### 最新基准测试结果
 ```
-ReuseOff:     505.9 ns/op    656 B/op    10 allocs/op
-ReuseOn_Hit:  254.3 ns/op      0 B/op     0 allocs/op
-ReuseOn_Miss: 354.6 ns/op    224 B/op     5 allocs/op
-ReuseOn_Mixed: 202.7 ns/op   48 B/op     4 allocs/op
+SQL构建性能对比:
+With Reuse:    14.42 ns/op    0 B/op     0 allocs/op
+Without Reuse: 69.73 ns/op    120 B/op   4 allocs/op
+
+历史测试结果:
+ReuseOff:      505.9 ns/op    656 B/op    10 allocs/op
+ReuseOn_Hit:   254.3 ns/op      0 B/op     0 allocs/op
+ReuseOn_Miss:  354.6 ns/op    224 B/op     5 allocs/op
+ReuseOn_Mixed: 202.7 ns/op    48 B/op     4 allocs/op
 ```
 
 ### 性能提升倍数
+- **SQL构建优化**: **4.8倍** (69.73ns → 14.42ns)
 - **缓存命中场景**: **2.0倍** (505.9ns → 254.3ns)
 - **缓存未命中场景**: **1.4倍** (505.9ns → 354.6ns)
 - **混合场景**: **2.5倍** (505.9ns → 202.7ns)
 - **并发场景**: **14.2倍** (33.39ns → 2.344ns)
 
 ### 内存优化效果
+- **SQL构建内存**: **100%减少** (120B → 0B，缓存命中时)
 - **单次操作内存**: **100%减少** (96B → 0B，缓存命中时)
-- **内存分配**: **100%减少** (2次 → 0次，缓存命中时)
+- **内存分配**: **100%减少** (4次 → 0次，缓存命中时)
 - **总体内存使用**: **54%减少** (36.37ns → 16.76ns)
 
 ### 技术实现
@@ -618,6 +623,7 @@ ReuseOn_Mixed: 202.7 ns/op   48 B/op     4 allocs/op
 - **字符串构建优化**: 使用`sync.Pool`复用`strings.Builder`
 - **缓存键预计算**: 避免重复字符串拼接
 - **零分配设计**: 缓存命中时完全无内存分配
+- **In函数优化**: 统一使用`in (?)`形式，避免缓存不一致问题
 
 ## 时间解析优化
 - **优化前**: 使用循环尝试多种时间格式
