@@ -56,12 +56,8 @@
    - Try to keep it simple, map one operation to one model!
 - **Other advantages**:
   - More natural where conditions (only add parentheses when needed, compared to gorm)
-  - In operation accepts various types of slices, and converts single element to Equal operation
+  - In operation accepts various types of slices
   - Migration from other ORM libraries requires no historical code modification, non-invasive modification
-  - **Support map types, operate database without defining struct**
-  - **Support embedded struct, automatically handle composite objects**
-  - **Support borm tag "-" field ignore functionality**
-  - **Reuse functionality enabled by default, providing 2-14x performance improvement**
 
 # Feature Matrix
 
@@ -454,7 +450,7 @@ Option usage example:
 |Between|Between("id", start, end)|Three parameters, between start and end|
 |Like|Like("name", "x%")|Two parameters, name like "x%"|
 |GLOB|GLOB("name", "?x*")|Two parameters, name glob "?x*"|
-|Multiple value selection|In("id", ids)|Two parameters, ids is basic type slice, single element slice converts to Eq|
+|Multiple value selection|In("id", ids)|Two parameters, ids is basic type slice|
 
 ### GroupBy
 

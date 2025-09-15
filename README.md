@@ -57,12 +57,8 @@
    - 尽量保持简单把一个操作映射一个model吧！
 - 其他优点：
   - 更自然的where条件（仅在需要加括号时添加，对比gorm）
-  - In操作接受各种类型slice，并且单元素时转成Equal操作
+  - In操作接受各种类型slice
   - 从其他orm库迁移无需修改历史代码，无侵入性修改
-  - **支持map类型，无需定义struct即可操作数据库**
-  - **支持embedded struct，自动处理组合对象**
-  - **支持borm tag为"-"的字段忽略功能**
-  - **默认开启Reuse功能，提供2-14倍性能提升**
 
 # 特性矩阵
 
@@ -455,7 +451,7 @@
 |在...之间|Between("id", start, end)|三个参数，在start和end之间|
 |近似|Like("name", "x%")|两个参数，name like "x%"|
 |近似|GLOB("name", "?x*")|两个参数，name glob "?x*"|
-|多值选择|In("id", ids)|两个参数，ids是基础类型的slice，slice只有1个元素会转化成Eq|
+|多值选择|In("id", ids)|两个参数，ids是基础类型的slice|
 
 ### GroupBy
 
