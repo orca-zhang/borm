@@ -176,7 +176,7 @@ func TestMapSupport(t *testing.T) {
 
 	t.Run("TestGenericMapInsert", func(t *testing.T) {
 		// 使用通用map类型插入数据
-		userMap := map[string]interface{}{
+		userMap := b.V{
 			"name":  "Jane Doe",
 			"age":   25,
 			"email": "jane@example.com",
@@ -237,7 +237,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 查询单条记录到map
-		var result map[string]interface{}
+		var result b.V
 		n, err = tbl.Select(&result, b.Fields("name", "age", "email"), b.Where("email = ?", "select@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -274,7 +274,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 查询多条记录到map切片
-		var results []map[string]interface{}
+		var results []b.V
 		n, err := tbl.Select(&results, b.Fields("name", "age", "email"), b.Where("email LIKE ?", "user%@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -359,7 +359,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 验证只插入了指定字段
-		var result map[string]interface{}
+		var result b.V
 		n, err = tbl.Select(&result, b.Fields("name", "age", "email"), b.Where("email = ?", "fields@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -407,7 +407,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 验证更新结果
-		var result map[string]interface{}
+		var result b.V
 		n, err = tbl.Select(&result, b.Fields("age"), b.Where("email = ?", "u@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -462,7 +462,7 @@ func TestMapSupportWithContext(t *testing.T) {
 		}
 
 		// 查询数据
-		var result map[string]interface{}
+		var result b.V
 		n, err = tbl.Select(&result, b.Fields("name", "age", "email"), b.Where("email = ?", "context@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -565,7 +565,7 @@ func BenchmarkMapOperations(bm *testing.B) {
 
 		bm.ResetTimer()
 		for i := 0; i < bm.N; i++ {
-			var results []map[string]interface{}
+			var results []b.V
 			tbl.Select(&results, b.Fields("name", "age", "email"), b.Limit(10))
 		}
 	})

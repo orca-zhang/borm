@@ -225,7 +225,7 @@
       }))
 
    // 使用map插入（无需定义struct）
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":  "John Doe",
       "email": "john@example.com",
       "age":   30,
@@ -277,11 +277,11 @@
 - Select 到 Map（无需定义 struct）
   ``` golang
   // 单行映射到 map
-  var m map[string]interface{}
+  var m b.V
   n, err := t.Select(&m, b.Fields("id", "name", "age"), b.Where(b.Eq("id", 1)))
 
   // 多行映射到 []map
-  var ms []map[string]interface{}
+  var ms []b.V
   n, err = t.Select(&ms, b.Fields("id", "name", "age"), b.Where(b.Gt("age", 18)))
   ```
 
@@ -380,7 +380,7 @@
 - **新功能示例：Map类型和Embedded Struct**
    ``` golang
    // 1. 使用map类型（无需定义struct）
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":     "John Doe",
       "email":    "john@example.com",
       "age":      30,
@@ -528,7 +528,7 @@
 
 |示例|说明|
 |-|-|
-|Insert(map[string]interface{}{"name": "John", "age": 30})|使用map插入数据|
+|Insert(b.V{"name": "John", "age": 30})|使用map插入数据|
 |支持所有CRUD操作|Select、Insert、Update、Delete都支持map|
 
 ### Embedded Struct支持

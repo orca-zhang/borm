@@ -22,11 +22,11 @@ func main() {
 	t := b.Table(db, "users")
 
 	// insert with map
-	m := map[string]interface{}{"name": "alice", "age": 20}
+	m := b.V{"name": "alice", "age": 20}
 	_, _ = t.Insert(m)
 
 	// select to []map
-	var rows []map[string]interface{}
+	var rows []b.V
 	_, _ = t.Select(&rows, b.Fields("id", "name", "age"), b.Where(b.Gt("age", 18)))
 	fmt.Printf("rows=%v\n", rows)
 

@@ -45,7 +45,7 @@ func main() {
 	table := borm.Table(db, "users").Debug()
 
 	// 测试单条记录
-	var result map[string]interface{}
+	var result borm.V
 	count, err := table.Select(&result, borm.Fields("id", "name", "age"))
 	if err != nil {
 		log.Fatal(err)
@@ -53,7 +53,7 @@ func main() {
 	fmt.Printf("单条记录: count=%d, result=%+v\n", count, result)
 
 	// 测试多条记录
-	var results []map[string]interface{}
+	var results []borm.V
 	count, err = table.Select(&results, borm.Fields("id", "name", "age"), borm.Where(borm.Eq("age", 30)))
 	if err != nil {
 		log.Fatal(err)

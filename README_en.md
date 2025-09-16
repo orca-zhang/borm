@@ -215,7 +215,7 @@
       }))
 
    // Use map insert (no need to define struct)
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":  "John Doe",
       "email": "john@example.com",
       "age":   30,
@@ -267,11 +267,11 @@
 - Select to Map (no struct needed)
   ``` golang
   // single row to map
-  var m map[string]interface{}
+  var m b.V
   n, err := t.Select(&m, b.Fields("id", "name", "age"), b.Where(b.Eq("id", 1)))
 
   // multiple rows to []map
-  var ms []map[string]interface{}
+  var ms []b.V
   n, err = t.Select(&ms, b.Fields("id", "name", "age"), b.Where(b.Gt("age", 18)))
   ```
 
@@ -370,7 +370,7 @@
 - **New features example: Map types and Embedded Struct**
    ``` golang
    // 1. Use map type (no need to define struct)
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":     "John Doe",
       "email":    "john@example.com",
       "age":      30,
@@ -518,7 +518,7 @@ Option usage example:
 
 |Example|Description|
 |-|-|
-|Insert(map[string]interface{}{"name": "John", "age": 30})|Use map to insert data|
+|Insert(b.V{"name": "John", "age": 30})|Use map to insert data|
 |Support all CRUD operations|Select, Insert, Update, Delete all support map|
 
 ### Embedded Struct Support
