@@ -133,3 +133,460 @@ func TestTableContext(t *testing.T) {
 		})
 	})
 }
+
+// TestMapSupport 测试Map类型支持功能（适配SQLite）
+func TestMapSupport(t *testing.T) {
+	// 创建测试表
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS test_map (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT,
+		age INTEGER,
+		email TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`
+	_, err := db.Exec(createTableSQL)
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	// 清理测试数据
+	defer func() {
+		db.Exec("DELETE FROM test_map")
+	}()
+
+	tbl := b.Table(db, "test_map").Debug()
+
+	t.Run("TestVTypeInsert", func(t *testing.T) {
+		// 使用V类型插入数据
+		userMap := b.V{
+			"name":  "John Doe",
+			"age":   30,
+			"email": "john@example.com",
+		}
+
+		n, err := tbl.Insert(userMap)
+		if err != nil {
+			t.Errorf("Insert failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+	})
+
+	t.Run("TestGenericMapInsert", func(t *testing.T) {
+		// 使用通用map类型插入数据
+		userMap := map[string]interface{}{
+			"name":  "Jane Doe",
+			"age":   25,
+			"email": "jane@example.com",
+		}
+
+		n, err := tbl.Insert(userMap)
+		if err != nil {
+			t.Errorf("Insert failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+	})
+
+	t.Run("TestVTypeUpdate", func(t *testing.T) {
+		// 先插入一条数据
+		userMap := b.V{
+			"name":  "Update Test",
+			"age":   20,
+			"email": "update@example.com",
+		}
+		n, err := tbl.Insert(userMap)
+		if err != nil {
+			t.Errorf("Insert failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+
+		// 更新数据
+		updateMap := b.V{
+			"name": "Updated Name",
+			"age":  21,
+		}
+
+		n, err = tbl.Update(updateMap, b.Where("email = ?", "update@example.com"))
+		if err != nil {
+			t.Errorf("Update failed: %v", err)
+		}
+		if n <= 0 {
+			t.Errorf("Expected at least 1 row updated, got %d", n)
+		}
+	})
+
+	t.Run("TestSelectToMap", func(t *testing.T) {
+		// 先插入一条数据
+		userMap := b.V{
+			"name":  "Select Test",
+			"age":   30,
+			"email": "select@example.com",
+		}
+		n, err := tbl.Insert(userMap)
+		if err != nil {
+			t.Errorf("Insert failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+
+		// 查询单条记录到map
+		var result map[string]interface{}
+		n, err = tbl.Select(&result, b.Fields("name", "age", "email"), b.Where("email = ?", "select@example.com"))
+		if err != nil {
+			t.Errorf("Select failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row selected, got %d", n)
+		}
+		if result["name"] != "Select Test" {
+			t.Errorf("Expected name 'Select Test', got %v", result["name"])
+		}
+		if result["age"] != int64(30) {
+			t.Errorf("Expected age 30, got %v", result["age"])
+		}
+		if result["email"] != "select@example.com" {
+			t.Errorf("Expected email 'select@example.com', got %v", result["email"])
+		}
+	})
+
+	t.Run("TestSelectToMapSlice", func(t *testing.T) {
+		// 先插入多条数据
+		users := []b.V{
+			{"name": "User1", "age": 25, "email": "user1@example.com"},
+			{"name": "User2", "age": 26, "email": "user2@example.com"},
+		}
+
+		for _, user := range users {
+			n, err := tbl.Insert(user)
+			if err != nil {
+				t.Errorf("Insert failed: %v", err)
+			}
+			if n != 1 {
+				t.Errorf("Expected 1 row inserted, got %d", n)
+			}
+		}
+
+		// 查询多条记录到map切片
+		var results []map[string]interface{}
+		n, err := tbl.Select(&results, b.Fields("name", "age", "email"), b.Where("email LIKE ?", "user%@example.com"))
+		if err != nil {
+			t.Errorf("Select failed: %v", err)
+		}
+		if n <= 0 {
+			t.Errorf("Expected at least 1 row selected, got %d", n)
+		}
+		if len(results) == 0 {
+			t.Errorf("Expected non-empty results slice")
+		}
+
+		// 验证结果
+		for _, result := range results {
+			if result["name"] == nil {
+				t.Errorf("Expected non-nil name")
+			}
+			if result["age"] == nil {
+				t.Errorf("Expected non-nil age")
+			}
+			if result["email"] == nil {
+				t.Errorf("Expected non-nil email")
+			}
+		}
+	})
+
+	t.Run("TestInsertIgnoreAndReplaceInto", func(t *testing.T) {
+		// 测试InsertIgnore
+		userMap := b.V{
+			"name":  "Ignore Test",
+			"age":   30,
+			"email": "ignore@example.com",
+		}
+
+		n, err := tbl.InsertIgnore(userMap)
+		if err != nil {
+			t.Errorf("InsertIgnore failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+
+		// 再次插入相同数据，应该被忽略
+		n, err = tbl.InsertIgnore(userMap)
+		if err != nil {
+			t.Errorf("InsertIgnore failed: %v", err)
+		}
+		if n != 0 {
+			t.Errorf("Expected 0 rows inserted (ignored), got %d", n)
+		}
+
+		// 测试ReplaceInto
+		replaceMap := b.V{
+			"name":  "Replace Test",
+			"age":   35,
+			"email": "replace@example.com",
+		}
+
+		n, err = tbl.ReplaceInto(replaceMap)
+		if err != nil {
+			t.Errorf("ReplaceInto failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+	})
+
+	t.Run("TestMapFieldsSupport", func(t *testing.T) {
+		// 使用Fields参数插入部分字段
+		userMap := b.V{
+			"name":  "Fields Test",
+			"age":   30,
+			"email": "fields@example.com",
+			"extra": "should be ignored",
+		}
+
+		n, err := tbl.Insert(userMap, b.Fields("name", "age", "email"))
+		if err != nil {
+			t.Errorf("Insert with Fields failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+
+		// 验证只插入了指定字段
+		var result map[string]interface{}
+		n, err = tbl.Select(&result, b.Fields("name", "age", "email"), b.Where("email = ?", "fields@example.com"))
+		if err != nil {
+			t.Errorf("Select failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row selected, got %d", n)
+		}
+		if result["name"] != "Fields Test" {
+			t.Errorf("Expected name 'Fields Test', got %v", result["name"])
+		}
+		if result["age"] != int64(30) {
+			t.Errorf("Expected age 30, got %v", result["age"])
+		}
+		if result["email"] != "fields@example.com" {
+			t.Errorf("Expected email 'fields@example.com', got %v", result["email"])
+		}
+	})
+
+	t.Run("TestMapUTypeSupport", func(t *testing.T) {
+		// 先插入一条数据
+		userMap := b.V{
+			"name":  "U Test",
+			"age":   30,
+			"email": "u@example.com",
+		}
+		n, err := tbl.Insert(userMap)
+		if err != nil {
+			t.Errorf("Insert failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+
+		// 使用U类型更新
+		updateMap := b.V{
+			"age": b.U("age + 1"),
+		}
+
+		n, err = tbl.Update(updateMap, b.Where("email = ?", "u@example.com"))
+		if err != nil {
+			t.Errorf("Update with U type failed: %v", err)
+		}
+		if n <= 0 {
+			t.Errorf("Expected at least 1 row updated, got %d", n)
+		}
+
+		// 验证更新结果
+		var result map[string]interface{}
+		n, err = tbl.Select(&result, b.Fields("age"), b.Where("email = ?", "u@example.com"))
+		if err != nil {
+			t.Errorf("Select failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row selected, got %d", n)
+		}
+		if result["age"] != int64(31) {
+			t.Errorf("Expected age 31, got %v", result["age"])
+		}
+	})
+}
+
+// TestMapSupportWithContext 测试带Context的Map支持功能
+func TestMapSupportWithContext(t *testing.T) {
+	// 创建测试表
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS test_map_ctx (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT,
+		age INTEGER,
+		email TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`
+	_, err := db.Exec(createTableSQL)
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	// 清理测试数据
+	defer func() {
+		db.Exec("DELETE FROM test_map_ctx")
+	}()
+
+	ctx := context.Background()
+	tbl := b.TableContext(ctx, db, "test_map_ctx").Debug()
+
+	t.Run("TestMapWithContext", func(t *testing.T) {
+		// 使用V类型插入数据
+		userMap := b.V{
+			"name":  "Context Test",
+			"age":   30,
+			"email": "context@example.com",
+		}
+
+		n, err := tbl.Insert(userMap)
+		if err != nil {
+			t.Errorf("Insert failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+
+		// 查询数据
+		var result map[string]interface{}
+		n, err = tbl.Select(&result, b.Fields("name", "age", "email"), b.Where("email = ?", "context@example.com"))
+		if err != nil {
+			t.Errorf("Select failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row selected, got %d", n)
+		}
+		if result["name"] != "Context Test" {
+			t.Errorf("Expected name 'Context Test', got %v", result["name"])
+		}
+	})
+
+	t.Run("TestTableContextAPI", func(t *testing.T) {
+		// 测试TableContext API
+		ctx := context.WithValue(context.Background(), "test_key", "test_value")
+		tbl := b.TableContext(ctx, db, "test_map_ctx")
+		
+		// 验证TableContext创建成功
+		if tbl == nil {
+			t.Errorf("TableContext should not be nil")
+		}
+		if tbl.Name != "test_map_ctx" {
+			t.Errorf("Expected table name 'test_map_ctx', got %s", tbl.Name)
+		}
+	})
+}
+
+// TestMapSupportErrorHandling 测试Map支持的错误处理
+func TestMapSupportErrorHandling(t *testing.T) {
+	tbl := b.Table(db, "test_map").Debug()
+
+	t.Run("TestEmptyMap", func(t *testing.T) {
+		emptyMap := b.V{}
+		n, err := tbl.Insert(emptyMap)
+		if err == nil {
+			t.Errorf("Expected error for empty map, got nil")
+		}
+		if n != 0 {
+			t.Errorf("Expected 0 rows inserted for empty map, got %d", n)
+		}
+	})
+
+	t.Run("TestMapWithNilValues", func(t *testing.T) {
+		mapWithNil := b.V{
+			"name":  "Nil Test",
+			"age":   nil,
+			"email": "nil@example.com",
+		}
+		n, err := tbl.Insert(mapWithNil)
+		if err != nil {
+			t.Errorf("Insert with nil values failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+	})
+}
+
+// BenchmarkMapOperations Map操作的基准测试
+func BenchmarkMapOperations(bm *testing.B) {
+	// 创建测试表
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS test_map_bench (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT,
+		age INTEGER,
+		email TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`
+	db.Exec(createTableSQL)
+
+	// 清理测试数据
+	defer func() {
+		db.Exec("DELETE FROM test_map_bench")
+	}()
+
+	tbl := b.Table(db, "test_map_bench")
+
+	bm.Run("MapInsert", func(bm *testing.B) {
+		for i := 0; i < bm.N; i++ {
+			userMap := b.V{
+				"name":  "Benchmark User",
+				"age":   30,
+				"email": "benchmark@example.com",
+			}
+			tbl.Insert(userMap)
+		}
+	})
+
+	bm.Run("MapSelect", func(bm *testing.B) {
+		// 先插入一些测试数据
+		for i := 0; i < 100; i++ {
+			userMap := b.V{
+				"name":  "Benchmark User",
+				"age":   30,
+				"email": "benchmark@example.com",
+			}
+			tbl.Insert(userMap)
+		}
+
+		bm.ResetTimer()
+		for i := 0; i < bm.N; i++ {
+			var results []map[string]interface{}
+			tbl.Select(&results, b.Fields("name", "age", "email"), b.Limit(10))
+		}
+	})
+
+	bm.Run("MapUpdate", func(bm *testing.B) {
+		// 先插入一些测试数据
+		for i := 0; i < 100; i++ {
+			userMap := b.V{
+				"name":  "Benchmark User",
+				"age":   30,
+				"email": "benchmark@example.com",
+			}
+			tbl.Insert(userMap)
+		}
+
+		bm.ResetTimer()
+		for i := 0; i < bm.N; i++ {
+			updateMap := b.V{
+				"age": 31,
+			}
+			tbl.Update(updateMap, b.Where("age = ?", 30), b.Limit(1))
+		}
+	})
+}
