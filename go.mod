@@ -1,4 +1,4 @@
-module borm
+module github.com/orca-zhang/borm
 
 go 1.17
 
