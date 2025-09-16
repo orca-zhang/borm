@@ -2663,7 +2663,7 @@ func TestMapSupport(t *testing.T) {
 
 	t.Run("TestGenericMapUpdate", func(t *testing.T) {
 		// 先插入一条数据
-		userMap := map[string]interface{}{
+		userMap := V{
 			"name":  "Generic Update Test",
 			"age":   20,
 			"email": "generic@example.com",
@@ -2677,7 +2677,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 更新数据
-		updateMap := map[string]interface{}{
+		updateMap := V{
 			"name": "Generic Updated Name",
 			"age":  21,
 		}
@@ -2707,7 +2707,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 查询单条记录到map
-		var result map[string]interface{}
+		var result V
 		n, err = tbl.Select(&result, Fields("name", "age", "email"), Where("email = ?", "select@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -2744,7 +2744,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 查询多条记录到map切片
-		var results []map[string]interface{}
+		var results []V
 		n, err := tbl.Select(&results, Fields("name", "age", "email"), Where("email LIKE ?", "user%@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -2829,7 +2829,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 验证只插入了指定字段
-		var result map[string]interface{}
+		var result V
 		n, err = tbl.Select(&result, Fields("name", "age", "email"), Where("email = ?", "fields@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -2877,7 +2877,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 验证更新结果
-		var result map[string]interface{}
+		var result V
 		n, err = tbl.Select(&result, Fields("age"), Where("email = ?", "u@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -2909,7 +2909,7 @@ func TestMapSupport(t *testing.T) {
 		}
 
 		// 复杂查询：年龄在25-35之间，按年龄排序
-		var results []map[string]interface{}
+		var results []V
 		n, err := tbl.Select(&results,
 			Fields("name", "age", "email"),
 			Where(And(
@@ -2988,7 +2988,7 @@ func TestMapSupportWithContext(t *testing.T) {
 		}
 
 		// 查询数据
-		var result map[string]interface{}
+		var result V
 		n, err = tbl.Select(&result, Fields("name", "age", "email"), Where("email = ?", "context@example.com"))
 		if err != nil {
 			t.Errorf("Select failed: %v", err)
@@ -3105,7 +3105,7 @@ func BenchmarkMapOperations(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			var results []map[string]interface{}
+			var results []V
 			tbl.Select(&results, Fields("name", "age", "email"), Limit(10))
 		}
 	})

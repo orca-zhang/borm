@@ -235,10 +235,9 @@
    n, err = t.Insert(userMap)
 
    // 使用通用map类型插入
-   userMap2 := map[string]interface{}{
-      "name":  "Jane Doe",
-      "email": "jane@example.com",
-      "age":   25,
+   userMap2 := b.V{
+      "name": "Alice",
+      "email": "alice@example.com",
    }
    n, err = t.Insert(userMap2)
 
@@ -284,11 +283,11 @@
    n, err = t.Select(&ids, b.Fields("id"), b.ForceIndex("idx_xxx"), b.Where("name = ?", name))
 
    // 查询到Map（单条记录）
-   var userMap map[string]interface{}
+   var userMap b.V
    n, err = t.Select(&userMap, b.Fields("id", "name", "email"), b.Where("id = ?", 1))
 
    // 查询到Map切片（多条记录）
-   var userMaps []map[string]interface{}
+   var userMaps []b.V
    n, err = t.Select(&userMaps, b.Fields("id", "name", "email"), b.Where("age > ?", 18))
    ```
 
@@ -311,7 +310,7 @@
       }, b.Fields("name"), b.Where(b.Eq("id", id)))
 
    // 使用通用map类型更新
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":  "John Updated",
       "email": "john.updated@example.com",
       "age":   31,
@@ -386,7 +385,7 @@
 - **新功能示例：Map类型和Embedded Struct**
    ``` golang
    // 1. 使用map类型（无需定义struct）
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":     "John Doe",
       "email":    "john@example.com",
       "age":      30,
@@ -545,10 +544,9 @@
 |-|-|
 |Insert(b.V{"name": "John", "age": 30})|使用V类型插入数据（推荐）|
 |Insert(map[string]interface{}{"name": "John", "age": 30})|使用通用map类型插入数据|
-|Update(b.V{"name": "John Updated", "age": 31})|使用V类型更新数据|
-|Update(map[string]interface{}{"name": "John Updated", "age": 31})|使用通用map类型更新数据|
-|var m map[string]interface{}; Select(&m, Fields("id","name"))|查询单条记录到map|
-|var ms []map[string]interface{}; Select(&ms, Fields("id","name"))|查询多条记录到map切片|
+|Update(b.V{"name": "John Updated", "age": 31})|使用通用map类型更新数据|
+|var m b.V; Select(&m, Fields("id","name"))|查询单条记录到map|
+|var ms []b.V; Select(&ms, Fields("id","name"))|查询多条记录到map切片|
 |InsertIgnore(b.V{"name": "John", "age": 30})|使用V类型插入忽略重复|
 |ReplaceInto(b.V{"name": "John", "age": 30})|使用V类型替换插入|
 |支持Fields过滤|Insert/Update支持指定字段|

@@ -214,7 +214,7 @@
       }))
 
    // Use map insert (no need to define struct)
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":  "John Doe",
       "email": "john@example.com",
       "age":   30,
@@ -282,7 +282,7 @@
       }, b.Fields("name"), b.Where(b.Eq("id", id)))
 
    // Use generic map type update
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":  "John Updated",
       "email": "john.updated@example.com",
       "age":   31,
@@ -351,7 +351,7 @@
 - **New features example: Map types and Embedded Struct**
    ``` golang
    // 1. Use map type (no need to define struct)
-   userMap := map[string]interface{}{
+   userMap := b.V{
       "name":     "John Doe",
       "email":    "john@example.com",
       "age":      30,
@@ -502,10 +502,10 @@ Option usage example:
 
 |Example|Description|
 |-|-|
-|Insert(map[string]interface{}{"name": "John", "age": 30})|Use map to insert data|
-|Update(map[string]interface{}{"name": "John Updated", "age": 31})|Use map to update data|
-|var m map[string]interface{}; Select(&m, Fields("id","name"))|Query single record to map|
-|var ms []map[string]interface{}; Select(&ms, Fields("id","name"))|Query multiple records to map slice|
+|Insert(b.V{"name": "John", "age": 30})|Use map to insert data|
+|Update(b.V{"name": "John Updated", "age": 31})|Use map to update data|
+|var m b.V; Select(&m, Fields("id","name"))|Query single record to map|
+|var ms []b.V; Select(&ms, Fields("id","name"))|Query multiple records to map slice|
 |Support all CRUD operations|Select, Insert, Update, Delete all support map|
 
 ### Embedded Struct Support
