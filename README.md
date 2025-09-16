@@ -23,6 +23,11 @@
 - **类型安全**：支持所有基本类型和复杂类型
 - **完整CRUD**：支持Insert、Update、Select、Delete操作
 - **Select到Map**：支持查询结果直接存储到map，灵活处理动态字段
+- **V类型别名**：`V`是`map[string]interface{}`的别名，使用更简洁
+- **通用map支持**：支持任意`map[string]interface{}`类型
+- **Fields过滤**：支持指定插入/更新的字段
+- **U类型支持**：支持原始SQL表达式（如`age+1`）
+- **InsertIgnore/ReplaceInto**：支持所有Map操作变体
 
 ## 🏗️ Embedded Struct支持
 - **自动处理组合对象**：无需手动处理嵌套结构
@@ -171,13 +176,20 @@
    ``` golang
    t := b.Table(d.DB, "t_usr")
 
-   t1 := b.Table(d.DB, "t_usr", ctx)
+   t1 := b.TableContext(ctx, d.DB, "t_usr")
    ```
 
 - `d.DB`是支持Exec/Query/QueryRow的数据库连接对象
 - `t_usr`可以是表名，或者是嵌套查询语句
-- `ctx`是需要传递的Context对象，默认不传为context.Background()
+- `ctx`是需要传递的Context对象，使用`TableContext`时传递
 - **Reuse功能默认开启**，提供2-14倍性能提升，无需额外配置
+
+### Table API说明
+
+|函数|参数顺序|说明|
+|-|-|-|
+|`Table(db, name)`|db, name|创建默认Table，使用context.Background()|
+|`TableContext(ctx, db, name)`|ctx, db, name|创建带Context的Table，参数顺序：context, db, name|
 
 3. （可选）定义model对象
    ``` golang
@@ -214,13 +226,21 @@
          "age":  b.U("age+1"), // 使用b.U来处理非变量更新
       }))
 
-   // 使用map插入（无需定义struct）
-   userMap := map[string]interface{}{
+   // 使用V类型插入（推荐，更简洁）
+   userMap := b.V{
       "name":  "John Doe",
       "email": "john@example.com",
       "age":   30,
    }
    n, err = t.Insert(userMap)
+
+   // 使用通用map类型插入
+   userMap2 := map[string]interface{}{
+      "name":  "Jane Doe",
+      "email": "jane@example.com",
+      "age":   25,
+   }
+   n, err = t.Insert(userMap2)
 
    // 支持embedded struct
    type User struct {
@@ -262,6 +282,14 @@
 
    // 可以强制索引
    n, err = t.Select(&ids, b.Fields("id"), b.ForceIndex("idx_xxx"), b.Where("name = ?", name))
+
+   // 查询到Map（单条记录）
+   var userMap map[string]interface{}
+   n, err = t.Select(&userMap, b.Fields("id", "name", "email"), b.Where("id = ?", 1))
+
+   // 查询到Map切片（多条记录）
+   var userMaps []map[string]interface{}
+   n, err = t.Select(&userMaps, b.Fields("id", "name", "email"), b.Where("age > ?", 18))
    ```
 
 - 更新
@@ -269,14 +297,14 @@
    // o可以是对象/slice/ptr slice
    n, err = t.Update(&o, b.Where(b.Eq("id", id)))
 
-   // 使用map更新
+   // 使用V类型更新（推荐）
    n, err = t.Update(b.V{
          "name": "new_name",
          "tag":  "tag1,tag2,tag3",
          "age":  b.U("age+1"), // 使用b.U来处理非变量更新
       }, b.Where(b.Eq("id", id)))
 
-   // 使用map更新部分字段
+   // 使用V类型更新部分字段
    n, err = t.Update(b.V{
          "name": "new_name",
          "tag":  "tag1,tag2,tag3",
@@ -289,6 +317,12 @@
       "age":   31,
    }
    n, err = t.Update(userMap, b.Where(b.Eq("id", id)))
+
+   // 使用V类型更新（支持U类型表达式）
+   n, err = t.Update(b.V{
+         "name": "Updated Name",
+         "age":  b.U("age + 1"), // 使用原始SQL表达式
+      }, b.Where(b.Eq("id", id)))
 
    n, err = t.Update(&o, b.Fields("name"), b.Where(b.Eq("id", id)))
    ```
@@ -420,6 +454,8 @@
 |Debug|打印sql语句|
 |Reuse|根据调用位置复用sql和存储方式（**默认开启**，提供2-14倍性能提升）|
 |NoReuse|关闭Reuse功能（不推荐，会降低性能）|
+|SafeReuse|已合并进Reuse，保持兼容性（推荐使用Reuse）|
+|NoSafeReuse|已合并进Reuse，保持兼容性|
 |UseNameWhenTagEmpty|用未设置borm tag的字段名本身作为待获取的db字段|
 |ToTimestamp|调用Insert时，使用时间戳，而非格式化字符串|
 
@@ -432,6 +468,10 @@
    // Reuse功能默认开启，无需手动调用
    // 如需关闭（不推荐），可调用：
    n, err = t.NoReuse().Insert(&o)
+   
+   // SafeReuse已合并进Reuse，保持兼容性
+   n, err = t.SafeReuse().Insert(&o)  // 等同于 t.Reuse().Insert(&o)
+   n, err = t.NoSafeReuse().Insert(&o)  // 等同于 t.Insert(&o)
    ```
 
 ### Where
@@ -503,10 +543,16 @@
 
 |示例|说明|
 |-|-|
-|Insert(map[string]interface{}{"name": "John", "age": 30})|使用map插入数据|
-|Update(map[string]interface{}{"name": "John Updated", "age": 31})|使用map更新数据|
+|Insert(b.V{"name": "John", "age": 30})|使用V类型插入数据（推荐）|
+|Insert(map[string]interface{}{"name": "John", "age": 30})|使用通用map类型插入数据|
+|Update(b.V{"name": "John Updated", "age": 31})|使用V类型更新数据|
+|Update(map[string]interface{}{"name": "John Updated", "age": 31})|使用通用map类型更新数据|
 |var m map[string]interface{}; Select(&m, Fields("id","name"))|查询单条记录到map|
 |var ms []map[string]interface{}; Select(&ms, Fields("id","name"))|查询多条记录到map切片|
+|InsertIgnore(b.V{"name": "John", "age": 30})|使用V类型插入忽略重复|
+|ReplaceInto(b.V{"name": "John", "age": 30})|使用V类型替换插入|
+|支持Fields过滤|Insert/Update支持指定字段|
+|支持U类型表达式|支持原始SQL表达式（如age+1）|
 |支持所有CRUD操作|Select、Insert、Update、Delete都支持map|
 
 ### Embedded Struct支持
