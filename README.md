@@ -124,10 +124,11 @@
    </tr>
    <tr>
       <td>Map类型支持</td>
+      <td>使用map操作数据库，支持Select到Map</td>
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
-      <td>无需定义struct，直接使用map操作数据库</td>
+      <td>无需定义struct，灵活处理动态字段</td>
    </tr>
    <tr>
       <td>可测试性</td>
@@ -173,12 +174,21 @@
    t := b.Table(d.DB, "t_usr")
 
    t1 := b.Table(d.DB, "t_usr", ctx)
+   t2 := b.TableContext(ctx, d.DB, "t_usr")
    ```
 
 - `d.DB`是支持Exec/Query/QueryRow的数据库连接对象
 - `t_usr`可以是表名，或者是嵌套查询语句
-- `ctx`是需要传递的Context对象，默认不传为context.Background()
+- `ctx`是需要传递的Context对象，使用`TableContext`时传递
 - **Reuse功能默认开启**，提供2-14倍性能提升，无需额外配置
+
+### Table API说明
+
+|函数|参数顺序|说明|
+|-|-|-|
+|`Table(db, name)`|db, name|创建默认Table，使用context.Background()|
+|`Table(db, name, ctx)`|db, name, ctx|创建带Context的Table（兼容旧API）|
+|`TableContext(ctx, db, name)`|ctx, db, name|创建带Context的Table，参数顺序：context, db, name|
 
 3. （可选）定义model对象
    ``` golang

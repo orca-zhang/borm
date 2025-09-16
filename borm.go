@@ -87,6 +87,16 @@ func Table(db BormDBIFace, name string, ctx ...context.Context) *BormTable {
 	}
 }
 
+// TableContext 创建带Context的Table，参数顺序：context, db, name
+func TableContext(ctx context.Context, db BormDBIFace, name string) *BormTable {
+	return &BormTable{
+		DB:   db,
+		Name: name,
+		ctx:  ctx,
+		Cfg:  Config{Reuse: true}, // 默认开启Reuse（内建形状感知）
+	}
+}
+
 // Reuse .
 func (t *BormTable) Reuse() *BormTable {
 	t.Cfg.Reuse = true
