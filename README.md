@@ -172,8 +172,7 @@
    ``` golang
    t := b.Table(d.DB, "t_usr")
 
-   t1 := b.Table(d.DB, "t_usr", ctx)
-   t2 := b.TableContext(ctx, d.DB, "t_usr")
+   t1 := b.TableContext(ctx, d.DB, "t_usr")
    ```
 
 - `d.DB`是支持Exec/Query/QueryRow的数据库连接对象
@@ -186,7 +185,6 @@
 |函数|参数顺序|说明|
 |-|-|-|
 |`Table(db, name)`|db, name|创建默认Table，使用context.Background()|
-|`Table(db, name, ctx)`|db, name, ctx|创建带Context的Table（兼容旧API）|
 |`TableContext(ctx, db, name)`|ctx, db, name|创建带Context的Table，参数顺序：context, db, name|
 
 3. （可选）定义model对象
