@@ -44,14 +44,10 @@ const (
 )
 
 const (
-	_timeLayout = "2006-01-02 15:04:05"
-)
-
-// 时间解析布局常量，避免重复字符串分配
-var (
-	timeLayoutWithNanoTZ = "2006-01-02 15:04:05.999999999 -07:00"
-	timeLayoutWithTZ     = "2006-01-02 15:04:05 -07:00"
-	timeLayoutWithZ      = "2006-01-02 15:04:05Z"
+	_timeLayout           = "2006-01-02 15:04:05"
+	_timeLayoutWithZ      = "2006-01-02 15:04:05Z"
+	_timeLayoutWithTZ     = "2006-01-02 15:04:05 -07:00"
+	_timeLayoutWithNanoTZ = "2006-01-02 15:04:05.999999999 -07:00"
 )
 
 var config struct {
@@ -2074,14 +2070,14 @@ func parseTimeString(s string) (time.Time, error) {
 		if s[len(s)-6] == '+' || s[len(s)-6] == '-' || s[len(s)-1] == 'Z' {
 			// 带纳秒的时区格式
 			if len(s) > 26 && s[19] == '.' {
-				return time.Parse(timeLayoutWithNanoTZ, s)
+				return time.Parse(_timeLayoutWithNanoTZ, s)
 			}
 			// 带时区的格式
-			return time.Parse(timeLayoutWithTZ, s)
+			return time.Parse(_timeLayoutWithTZ, s)
 		}
 		// Z结尾的格式
 		if s[len(s)-1] == 'Z' {
-			return time.Parse(timeLayoutWithZ, s)
+			return time.Parse(_timeLayoutWithZ, s)
 		}
 	}
 
