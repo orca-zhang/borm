@@ -127,7 +127,7 @@
    </tr>
    <tr>
       <td>Map类型支持</td>
-      <td>使用map操作数据库，支持Select到Map</td>
+      <td>使用map操作数据库</td>
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
