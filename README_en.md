@@ -122,7 +122,7 @@
    </tr>
    <tr>
       <td>Map type support</td>
-      <td>Operate database with map, support Select to Map</td>
+      <td>Operate database with map</td>
       <td>:white_check_mark:</td>
       <td>:x:</td>
       <td>:x:</td>
