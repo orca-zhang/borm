@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	b "borm"
+	b "github.com/orca-zhang/borm"
 )
 
 // noop DB impl for Exec-only benchmarks

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"borm"
+	"github.com/orca-zhang/borm"
 
 	_ "github.com/mattn/go-sqlite3"
 )

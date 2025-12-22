@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	b "borm"
+	b "github.com/orca-zhang/borm"
 
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/smartystreets/goconvey/convey"

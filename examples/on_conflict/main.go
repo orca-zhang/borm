@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"log"
 
-	b "borm"
+	b "github.com/orca-zhang/borm"
 
 	_ "github.com/mattn/go-sqlite3"
 )
