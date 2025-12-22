@@ -453,8 +453,6 @@
 |Debug|打印sql语句|
 |Reuse|根据调用位置复用sql和存储方式（**默认开启**，提供2-14倍性能提升）|
 |NoReuse|关闭Reuse功能（不推荐，会降低性能）|
-|SafeReuse|已合并进Reuse，保持兼容性（推荐使用Reuse）|
-|NoSafeReuse|已合并进Reuse，保持兼容性|
 |UseNameWhenTagEmpty|用未设置borm tag的字段名本身作为待获取的db字段|
 |ToTimestamp|调用Insert时，使用时间戳，而非格式化字符串|
 
@@ -467,10 +465,6 @@
    // Reuse功能默认开启，无需手动调用
    // 如需关闭（不推荐），可调用：
    n, err = t.NoReuse().Insert(&o)
-   
-   // SafeReuse已合并进Reuse，保持兼容性
-   n, err = t.SafeReuse().Insert(&o)  // 等同于 t.Reuse().Insert(&o)
-   n, err = t.NoSafeReuse().Insert(&o)  // 等同于 t.Insert(&o)
    ```
 
 ### Where
