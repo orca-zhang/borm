@@ -1874,7 +1874,7 @@ func ReuseTest() {
 func TestMisc(t *testing.T) {
 	Convey("Table", t, func() {
 		Convey("Table with context", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 			t.UseNameWhenTagEmpty()
 			t.ToTimestamp()
 		})
@@ -2278,7 +2278,7 @@ func TestMisc(t *testing.T) {
 
 	Convey("Select", t, func() {
 		Convey("Select - arg len err", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			_, err := t.Select(&o)
@@ -2286,7 +2286,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Select - arg type err", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			_, err := t.Select(o, Where("`id` >= ?", 1))
@@ -2299,7 +2299,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Select - UseNameWhenTagEmpty", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x1
 			_, err := t.Select(&o, Where("`id` >= ?", 1))
@@ -2316,7 +2316,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Select - other type with Fields", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var cnt int64
 			_, err := t.Select(&cnt, Where("`id` >= ?", 1))
@@ -2327,7 +2327,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Select - empty single result", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			n, err := t.Select(&o, Where("`id` >= ?", 1011))
@@ -2336,7 +2336,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Select - sql error", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			n, err := t.Select(&o, Where("xxxx"))
@@ -2350,7 +2350,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Select - scan error", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o []struct {
 				Name struct {
@@ -2365,7 +2365,7 @@ func TestMisc(t *testing.T) {
 
 	Convey("Insert", t, func() {
 		Convey("Insert - arg type err", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			_, err := t.Insert(o, Where("`id` >= ?", 1))
@@ -2377,7 +2377,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Insert - sql error", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			n, err := t.Insert(&o, Where("xxxx"))
@@ -2386,7 +2386,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Insert - UseNameWhenTagEmpty", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			o := x1{
 				X: "xxx",
@@ -2407,7 +2407,7 @@ func TestMisc(t *testing.T) {
 
 	Convey("Update", t, func() {
 		Convey("Update - arg len err", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			_, err := t.Update(&o)
@@ -2415,7 +2415,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Update - arg type err", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			_, err := t.Update(o, Where("`id` >= ?", 1))
@@ -2427,7 +2427,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Update - sql error", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			var o x
 			n, err := t.Update(&o, Where("xxxx"))
@@ -2436,7 +2436,7 @@ func TestMisc(t *testing.T) {
 		})
 
 		Convey("Update - UseNameWhenTagEmpty", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			o := x1{
 				X:     "xxx2",
@@ -2460,14 +2460,14 @@ func TestMisc(t *testing.T) {
 
 	Convey("Delete", t, func() {
 		Convey("Delete - arg len err", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			_, err := t.Delete()
 			So(err, ShouldNotBeNil)
 		})
 
 		Convey("Delete - sql error", func() {
-			t := Table(db, "test", context.TODO())
+			t := TableContext(context.TODO(), db, "test")
 
 			n, err := t.Delete(Where("xxxx"))
 			So(err, ShouldNotBeNil)

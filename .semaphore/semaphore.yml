@@ -11,7 +11,7 @@ blocks:
         - name: go test
           commands:
             - sem-service start mysql --username=root --password=semaphoredb
-            - sem-version go 1.13
+            - sem-version go 1.18
             - export GOPATH=~/go
             - 'export PATH=/home/semaphore/go/bin:$PATH'
             - checkout
