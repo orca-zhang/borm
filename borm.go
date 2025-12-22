@@ -320,7 +320,13 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			}
 			m := make(map[string]interface{}, len(fi.Fields))
 			for i, name := range fi.Fields {
-				m[name] = vals[i]
+				val := vals[i]
+				// 将[]byte转换为string
+				if b, ok := val.([]byte); ok {
+					m[name] = string(b)
+				} else {
+					m[name] = val
+				}
 			}
 			// 设置到 *map[string]interface{}
 			reflect.ValueOf(res).Elem().Set(reflect.ValueOf(m))
@@ -342,7 +348,13 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			}
 			m := make(map[string]interface{}, len(fi.Fields))
 			for i, name := range fi.Fields {
-				m[name] = vals[i]
+				val := vals[i]
+				// 将[]byte转换为string
+				if b, ok := val.([]byte); ok {
+					m[name] = string(b)
+				} else {
+					m[name] = val
+				}
 			}
 			sliceVal.Set(reflect.Append(sliceVal, reflect.ValueOf(m)))
 			count++
@@ -634,6 +646,10 @@ func (t *BormTable) insertMap(m V, args ...BormItem) (int, error) {
 				fieldsToProcess = append(fieldsToProcess, k)
 			}
 		}
+		// 检查空map
+		if len(fieldsToProcess) == 0 {
+			return 0, errors.New("empty map: no fields to insert")
+		}
 	}
 
 	// 构建字段列表
@@ -810,6 +826,7 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 		if len(args) > 0 && args[0].Type() == _fields {
 			m := t.getStructFieldMap(s)
 
+			sb.WriteString(" (")
 			for i, field := range args[0].(*fieldsItem).Fields {
 				f := m[field]
 				if f != nil {
@@ -820,12 +837,13 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 					sb.WriteString(",")
 				}
 				fieldEscape(&sb, field)
-				sb.WriteString("=?")
 			}
+			sb.WriteString(") values (")
 
 			args = args[1:]
 
 		} else {
+			sb.WriteString(" (")
 			for i := 0; i < s.NumField(); i++ {
 				f := s.Field(i)
 				ft := f.Tag().Get("borm")
@@ -840,15 +858,23 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 
 				if ft == "" {
 					fieldEscape(&sb, f.Name())
-					sb.WriteString("=?")
 				} else {
 					fieldEscape(&sb, ft)
-					sb.WriteString("=?")
 				}
 
 				cols = append(cols, f)
 			}
+			sb.WriteString(") values (")
 		}
+
+		// 构建VALUES部分的占位符
+		for i := range cols {
+			if i > 0 {
+				sb.WriteString(",")
+			}
+			sb.WriteString("?")
+		}
+		sb.WriteString(")")
 
 		t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
 
@@ -1097,6 +1123,7 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 		if len(args) > 0 && args[0].Type() == _fields {
 			m := t.getStructFieldMap(s)
 
+			sb.WriteString(" (")
 			for i, field := range args[0].(*fieldsItem).Fields {
 				f := m[field]
 				if f != nil {
@@ -1107,12 +1134,13 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 					sb.WriteString(",")
 				}
 				fieldEscape(&sb, field)
-				sb.WriteString("=?")
 			}
+			sb.WriteString(") values (")
 
 			args = args[1:]
 
 		} else {
+			sb.WriteString(" (")
 			for i := 0; i < s.NumField(); i++ {
 				f := s.Field(i)
 				ft := f.Tag().Get("borm")
@@ -1127,15 +1155,23 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 
 				if ft == "" {
 					fieldEscape(&sb, f.Name())
-					sb.WriteString("=?")
 				} else {
 					fieldEscape(&sb, ft)
-					sb.WriteString("=?")
 				}
 
 				cols = append(cols, f)
 			}
+			sb.WriteString(") values (")
 		}
+
+		// 构建VALUES部分的占位符
+		for i := range cols {
+			if i > 0 {
+				sb.WriteString(",")
+			}
+			sb.WriteString("?")
+		}
+		sb.WriteString(")")
 
 		t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
 
@@ -2063,6 +2099,11 @@ func parseTimeString(s string) (time.Time, error) {
 		return time.Time{}, nil
 	}
 
+	// 处理MySQL无效日期格式 0000-00-00 和 0000-00-00 00:00:00
+	if strings.HasPrefix(s, "0000-00-00") {
+		return time.Time{}, nil
+	}
+
 	// 纯日期格式检测
 	if len(s) == 10 && s[4] == '-' && s[7] == '-' {
 		return time.Parse("2006-01-02", s)
@@ -2143,6 +2184,21 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 		}
 
 		// 如果时间解析失败，尝试直接解析为数字
+		// 对于浮点类型，使用ParseFloat
+		if dk == reflect.Float32 || dk == reflect.Float64 {
+			f64, err := strconv.ParseFloat(tmp, 64)
+			if err != nil {
+				return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
+			}
+			if dk == reflect.Float32 {
+				*(*float32)(ptrVal) = float32(f64)
+			} else {
+				*(*float64)(ptrVal) = f64
+			}
+			return nil
+		}
+		
+		// 对于整数类型，使用ParseInt
 		i64, err := strconv.ParseInt(tmp, 10, 64)
 		if err != nil {
 			return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
@@ -2168,10 +2224,6 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 			*(*uint32)(ptrVal) = uint32(i64)
 		case reflect.Uint64:
 			*(*uint64)(ptrVal) = uint64(i64)
-		case reflect.Float32:
-			*(*float32)(ptrVal) = float32(i64)
-		case reflect.Float64:
-			*(*float64)(ptrVal) = float64(i64)
 		}
 		return nil
 	}
@@ -2246,8 +2298,14 @@ func (dest *scanner) Scan(src interface{}) error {
 
 	// NULL值
 	if src == nil || st.UnsafeIsNil(reflect2.PtrOf(src)) {
-		// 设置成默认值，如果是指针，那么是空指针
-		dt.UnsafeSet(dest.Val, dt.UnsafeNew())
+		// 如果是指针类型，设置为nil
+		if dt.Kind() == reflect.Ptr {
+			ptrType := dt.(reflect2.PtrType)
+			ptrType.UnsafeSet(dest.Val, nil)
+		} else {
+			// 设置成默认值
+			dt.UnsafeSet(dest.Val, dt.UnsafeNew())
+		}
 		return nil
 	}
 

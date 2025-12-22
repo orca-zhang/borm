@@ -1913,7 +1913,8 @@ func TestMisc(t *testing.T) {
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
 
-			So(sb.String(), ShouldEqual, " where `id`=?")
+			// 在Reuse模式下，单值也使用in (?)保持缓存一致性
+			So(sb.String(), ShouldEqual, " where `id` in (?)")
 			So(len(stmtArgs), ShouldEqual, 1)
 		})
 		Convey("Where In 2 slice", func() {
