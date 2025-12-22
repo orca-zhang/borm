@@ -1263,7 +1263,8 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("123.33"))
 			So(err, ShouldBeNil)
-			So(f, ShouldEqual, 123.33)
+			// float32有精度损失，使用近似比较
+			So(float64(f), ShouldAlmostEqual, 123.33, 0.001)
 		})
 
 		Convey("string to float64", func() {

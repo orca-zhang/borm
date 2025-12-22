@@ -806,9 +806,23 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 		fieldEscape(&sb, t.Name)
 
 		rt := reflect2.TypeOf(objs)
+		var isArray bool
+		var isPtrArray bool
+		var rtPtr reflect2.Type
 		switch rt.Kind() {
 		case reflect.Ptr:
 			rt = rt.(reflect2.PtrType).Elem()
+			if rt.Kind() == reflect.Slice {
+				isArray = true
+				rtElem := rt.(reflect2.SliceType).Elem()
+				if rtElem.Kind() == reflect.Ptr {
+					rtPtr = rtElem
+					rt = rtElem.(reflect2.PtrType).Elem()
+					isPtrArray = true
+				} else {
+					rt = rtElem
+				}
+			}
 		default:
 			return 0, errors.New("argument 2 should be map or ptr")
 		}
@@ -867,16 +881,33 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 			sb.WriteString(") values (")
 		}
 
-		// 构建VALUES部分的占位符
+		// 构建VALUES部分的占位符模板
+		valuesTemplate := "("
 		for i := range cols {
 			if i > 0 {
-				sb.WriteString(",")
+				valuesTemplate += ","
 			}
-			sb.WriteString("?")
+			valuesTemplate += "?"
 		}
-		sb.WriteString(")")
+		valuesTemplate += ")"
 
-		t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
+		if isArray {
+			// 批量插入：为每个元素添加VALUES
+			sliceType := reflect2.TypeOf(objs).(reflect2.PtrType).Elem().(reflect2.SliceType)
+			length := sliceType.UnsafeLengthOf(reflect2.PtrOf(objs))
+			for i := 0; i < length; i++ {
+				if i > 0 {
+					sb.WriteString(",")
+				}
+				sb.WriteString(valuesTemplate)
+				elemPtr := sliceType.UnsafeGetIndex(reflect2.PtrOf(objs), i)
+				t.inputArgs(&stmtArgs, cols, rtPtr, s, isPtrArray, elemPtr)
+			}
+		} else {
+			// 单条插入
+			sb.WriteString(valuesTemplate)
+			t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
+		}
 
 		for _, arg := range args {
 			arg.BuildSQL(&sb)
@@ -946,6 +977,10 @@ func (t *BormTable) insertMapWithPrefix(prefix string, m V, args ...BormItem) (i
 			if v != nil {
 				fieldsToProcess = append(fieldsToProcess, k)
 			}
+		}
+		// 检查空map
+		if len(fieldsToProcess) == 0 {
+			return 0, errors.New("empty map: no fields to insert")
 		}
 	}
 
