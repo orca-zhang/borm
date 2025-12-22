@@ -107,27 +107,27 @@ func TestTableContext(t *testing.T) {
 		Convey("创建带Context的Table", func() {
 			ctx := context.Background()
 			tbl := b.TableContext(ctx, db, "test")
-			
+
 			So(tbl, ShouldNotBeNil)
 			So(tbl.Name, ShouldEqual, "test")
 		})
-		
+
 		Convey("使用TableContext进行查询", func() {
 			ctx := context.WithValue(context.Background(), "test_key", "test_value")
 			tbl := b.TableContext(ctx, db, "test")
-			
+
 			var o x
 			n, err := tbl.Select(&o, b.Where("`id` >= ?", 1), b.Limit(1))
-			
+
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 		})
-		
+
 		Convey("TableContext与Table(db, name, ctx)等价", func() {
 			ctx := context.Background()
 			tbl1 := b.TableContext(ctx, db, "test")
 			tbl2 := b.Table(db, "test", ctx)
-			
+
 			So(tbl1.Name, ShouldEqual, tbl2.Name)
 			So(tbl1.Cfg.Reuse, ShouldEqual, tbl2.Cfg.Reuse)
 		})
@@ -479,7 +479,7 @@ func TestMapSupportWithContext(t *testing.T) {
 		// 测试TableContext API
 		ctx := context.WithValue(context.Background(), "test_key", "test_value")
 		tbl := b.TableContext(ctx, db, "test_map_ctx")
-		
+
 		// 验证TableContext创建成功
 		if tbl == nil {
 			t.Errorf("TableContext should not be nil")
@@ -623,7 +623,7 @@ func TestSelectWithIgnoredField(t *testing.T) {
 		Convey("Select all fields should ignore borm:\"-\" fields", func() {
 			var result TestStruct
 			n, err := tbl.Select(&result, Where("id = ?", 1))
-			
+
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 			So(result.Name, ShouldEqual, "test")
@@ -637,8 +637,8 @@ func TestSelectWithIgnoredField(t *testing.T) {
 			}
 
 			type TestStructWithEmbedded struct {
-				ID   int64          `borm:"id"`
-				Name string         `borm:"name"`
+				ID    int64          `borm:"id"`
+				Name  string         `borm:"name"`
 				Embed EmbeddedStruct `borm:"-"` // embedded struct should be ignored
 			}
 
@@ -660,7 +660,7 @@ func TestSelectWithIgnoredField(t *testing.T) {
 
 			var result TestStructWithEmbedded
 			n, err := tbl2.Select(&result, Where("id = ?", 1))
-			
+
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 			So(result.Name, ShouldEqual, "test2")
