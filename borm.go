@@ -2401,7 +2401,16 @@ func (dest *scanner) Scan(src interface{}) error {
 
 	// Same type, assign directly
 	if dk == sk {
-		dt.UnsafeSet(dest.Val, reflect2.PtrOf(src))
+		ptrVal := reflect2.PtrOf(src)
+		// Check if ptrVal is nil to avoid panic
+		if ptrVal == nil && dk == reflect.Ptr {
+			// For pointer types, set to nil
+			ptrType := dt.(reflect2.PtrType)
+			var nilPtr unsafe.Pointer
+			ptrType.UnsafeSet(dest.Val, nilPtr)
+		} else {
+			dt.UnsafeSet(dest.Val, ptrVal)
+		}
 		return nil
 	}
 
