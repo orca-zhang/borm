@@ -142,7 +142,7 @@ func TestMapSupport(t *testing.T) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT,
 		age INTEGER,
-		email TEXT,
+		email TEXT UNIQUE,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)`
 	_, err := db.Exec(createTableSQL)
@@ -603,7 +603,7 @@ func TestSelectWithIgnoredField(t *testing.T) {
 		// Create test table
 		createTableSQL := `
 		CREATE TABLE IF NOT EXISTS test_ignore_field (
-			id INT AUTO_INCREMENT PRIMARY KEY,
+			id INTEGER PRIMARY KEY,
 			name VARCHAR(100)
 		)`
 		_, err := db.Exec(createTableSQL)
@@ -613,6 +613,9 @@ func TestSelectWithIgnoredField(t *testing.T) {
 		defer func() {
 			db.Exec("DELETE FROM test_ignore_field")
 		}()
+
+		// Clean table before test to ensure id starts at 1
+		db.Exec("DELETE FROM test_ignore_field")
 
 		// Insert test data
 		tbl := b.Table(db, "test_ignore_field")
@@ -644,7 +647,7 @@ func TestSelectWithIgnoredField(t *testing.T) {
 
 			createTableSQL2 := `
 			CREATE TABLE IF NOT EXISTS test_ignore_embedded (
-				id INT AUTO_INCREMENT PRIMARY KEY,
+				id INTEGER PRIMARY KEY,
 				name VARCHAR(100)
 			)`
 			_, err := db.Exec(createTableSQL2)
@@ -653,6 +656,9 @@ func TestSelectWithIgnoredField(t *testing.T) {
 			defer func() {
 				db.Exec("DELETE FROM test_ignore_embedded")
 			}()
+
+			// Clean table before test to ensure id starts at 1
+			db.Exec("DELETE FROM test_ignore_embedded")
 
 			tbl2 := b.Table(db, "test_ignore_embedded")
 			_, err = db.Exec("INSERT INTO test_ignore_embedded (name) VALUES (?)", "test2")

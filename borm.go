@@ -676,10 +676,43 @@ func (t *BormTable) insert(prefix string, objs interface{}, args []BormItem) (in
 				return 0, errors.New("map key must be string type")
 			}
 
-			// 使用通用字段收集函数处理map
 			var fieldInfos []FieldInfo
-			if err := t.collectFieldsGeneric(objs, rt, &sb, &fieldInfos); err != nil {
-				return 0, err
+
+			// 检查是否有Fields参数
+			if len(args) > 0 && args[0].Type() == _fields {
+				// 使用Fields指定的字段
+				fieldsItem := args[0].(*fieldsItem)
+				fieldsItem.BuildSQL(&sb)
+
+				// 获取map值（使用reflect来访问，避免类型断言问题）
+				rv := reflect.ValueOf(objs)
+				if rv.Kind() == reflect.Ptr {
+					rv = rv.Elem()
+				}
+
+				// 为每个字段创建FieldInfo
+				for _, field := range fieldsItem.Fields {
+					mapKey := reflect.ValueOf(field)
+					mapValue := rv.MapIndex(mapKey)
+					var value interface{}
+					if mapValue.IsValid() {
+						value = mapValue.Interface()
+					} else {
+						value = nil
+					}
+					fieldInfos = append(fieldInfos, &MapFieldInfo{
+						key:       field,
+						value:     value,
+						valueType: mapType.Elem(),
+					})
+				}
+
+				args = args[1:]
+			} else {
+				// 使用通用字段收集函数处理map（使用所有字段）
+				if err := t.collectFieldsGeneric(objs, rt, &sb, &fieldInfos); err != nil {
+					return 0, err
+				}
 			}
 
 			// 构建VALUES部分
