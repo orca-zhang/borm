@@ -2356,6 +2356,7 @@ func (dest *scanner) Scan(src interface{}) error {
 		return nil
 	}
 
+	st = reflect2.TypeOf(src)
 	var (
 		sk = st.Kind()
 		dk = dt.Kind()
