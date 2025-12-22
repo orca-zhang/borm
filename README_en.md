@@ -461,7 +461,7 @@ Option usage example:
 |-|-|
 |Where("id=? and name=?", id, name)|Regular formatted version|
 |Where(Eq("id", id), Eq("name", name)...)|Default to and connection|
-|Where(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
+|Where(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)...)|And & Or|
 
 ### Predefined Where Conditions
 
@@ -493,7 +493,7 @@ Option usage example:
 |-|-|
 |Having("id=? and name=?", id, name)|Regular formatted version|
 |Having(Eq("id", id), Eq("name", name)...)|Default to and connection|
-|Having(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
+|Having(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)...)|And & Or|
 
 ### OrderBy
 

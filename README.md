@@ -469,7 +469,7 @@
 |-|-|
 |Where("id=? and name=?", id, name)|常规格式化版本|
 |Where(Eq("id", id), Eq("name", name)...)|默认为and连接|
-|Where(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
+|Where(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)...)|And & Or|
 
 ### 预置Where条件
 
@@ -501,7 +501,7 @@
 |-|-|
 |Having("id=? and name=?", id, name)|常规格式化版本|
 |Having(Eq("id", id), Eq("name", name)...)|默认为and连接|
-|Having(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)|And & Or|
+|Having(And(Eq("x", x), Eq("y", y), Or(Eq("x", x), Eq("y", y)...)...)...)|And & Or|
 
 ### OrderBy
 

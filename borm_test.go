@@ -590,3 +590,80 @@ func BenchmarkMapOperations(bm *testing.B) {
 		}
 	})
 }
+
+// TestSelectWithIgnoredField tests that Select ignores fields with borm:"-" tag
+func TestSelectWithIgnoredField(t *testing.T) {
+	Convey("Select should ignore fields with borm:\"-\" tag", t, func() {
+		type TestStruct struct {
+			ID   int64  `borm:"id"`
+			Name string `borm:"name"`
+			Pass string `borm:"-"` // field should be ignored
+		}
+
+		// Create test table
+		createTableSQL := `
+		CREATE TABLE IF NOT EXISTS test_ignore_field (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			name VARCHAR(100)
+		)`
+		_, err := db.Exec(createTableSQL)
+		So(err, ShouldBeNil)
+
+		// Clean up test data
+		defer func() {
+			db.Exec("DELETE FROM test_ignore_field")
+		}()
+
+		// Insert test data
+		tbl := Table(db, "test_ignore_field")
+		_, err = db.Exec("INSERT INTO test_ignore_field (name) VALUES (?)", "test")
+		So(err, ShouldBeNil)
+
+		// Test Select all fields (without specifying Fields)
+		Convey("Select all fields should ignore borm:\"-\" fields", func() {
+			var result TestStruct
+			n, err := tbl.Select(&result, Where("id = ?", 1))
+			
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+			So(result.Name, ShouldEqual, "test")
+		})
+
+		// Test embedded struct field being ignored
+		Convey("Select should ignore embedded struct fields with borm:\"-\" tag", func() {
+			type EmbeddedStruct struct {
+				Field1 string `borm:"field1"`
+				Field2 string `borm:"field2"`
+			}
+
+			type TestStructWithEmbedded struct {
+				ID   int64          `borm:"id"`
+				Name string         `borm:"name"`
+				Embed EmbeddedStruct `borm:"-"` // embedded struct should be ignored
+			}
+
+			createTableSQL2 := `
+			CREATE TABLE IF NOT EXISTS test_ignore_embedded (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				name VARCHAR(100)
+			)`
+			_, err := db.Exec(createTableSQL2)
+			So(err, ShouldBeNil)
+
+			defer func() {
+				db.Exec("DELETE FROM test_ignore_embedded")
+			}()
+
+			tbl2 := Table(db, "test_ignore_embedded")
+			_, err = db.Exec("INSERT INTO test_ignore_embedded (name) VALUES (?)", "test2")
+			So(err, ShouldBeNil)
+
+			var result TestStructWithEmbedded
+			n, err := tbl2.Select(&result, Where("id = ?", 1))
+			
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+			So(result.Name, ShouldEqual, "test2")
+		})
+	})
+}

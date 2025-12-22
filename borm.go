@@ -373,6 +373,10 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 					f := s.Field(i)
 					ft := f.Tag().Get("borm")
 
+					if ft == "-" {
+						continue
+					}
+
 					if !t.Cfg.UseNameWhenTagEmpty && ft == "" {
 						continue
 					}
