@@ -63,7 +63,7 @@ type U string
 // Config .
 type Config struct {
 	Debug               bool
-	Reuse               bool // 默认开启，提供2-14倍性能提升
+	Reuse               bool // Enabled by default, provides 2-14x performance improvement
 	UseNameWhenTagEmpty bool
 	ToTimestamp         bool
 }
@@ -74,17 +74,17 @@ func Table(db BormDBIFace, name string) *BormTable {
 		DB:   db,
 		Name: name,
 		ctx:  context.Background(),
-		Cfg:  Config{Reuse: true}, // 默认开启Reuse功能
+		Cfg:  Config{Reuse: true}, // Enable Reuse by default
 	}
 }
 
-// TableContext 创建带Context的Table，参数顺序：context, db, name
+// TableContext creates a Table with Context, parameter order: context, db, name
 func TableContext(ctx context.Context, db BormDBIFace, name string) *BormTable {
 	return &BormTable{
 		DB:   db,
 		Name: name,
 		ctx:  ctx,
-		Cfg:  Config{Reuse: true}, // 默认开启Reuse功能
+		Cfg:  Config{Reuse: true}, // Enable Reuse by default
 	}
 }
 
@@ -94,16 +94,16 @@ func (t *BormTable) Reuse() *BormTable {
 	return t
 }
 
-// NoReuse 关闭Reuse功能（如果不需要缓存优化）
+// NoReuse disables Reuse functionality (if cache optimization is not needed)
 func (t *BormTable) NoReuse() *BormTable {
 	t.Cfg.Reuse = false
 	return t
 }
 
-// SafeReuse 已合并进 Reuse，保持兼容
+// SafeReuse has been merged into Reuse, kept for compatibility
 func (t *BormTable) SafeReuse() *BormTable { return t.Reuse() }
 
-// NoSafeReuse 已合并进 Reuse，保持兼容
+// NoSafeReuse has been merged into Reuse, kept for compatibility
 func (t *BormTable) NoSafeReuse() *BormTable { return t }
 
 // Debug .
@@ -273,7 +273,7 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 		return 0, errors.New("argument 2 should be map or ptr")
 	}
 
-	// Map类型选择：要求显式Fields，且不走复用缓存
+	// Map type selection: requires explicit Fields, and does not use reuse cache
 	if isMap {
 		if len(args) <= 0 || args[0].Type() != _fields {
 			return 0, errors.New("map select requires Fields(\"col\", ...) explicitly")
@@ -299,7 +299,7 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			log.Println(sqlStr, stmtArgs)
 		}
 
-		// 构建scan目标
+		// Build scan target
 		buildScanDests := func(n int) ([]interface{}, []interface{}) {
 			vals := make([]interface{}, n)
 			dests := make([]interface{}, n)
@@ -321,14 +321,14 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			m := make(map[string]interface{}, len(fi.Fields))
 			for i, name := range fi.Fields {
 				val := vals[i]
-				// 将[]byte转换为string
+				// Convert []byte to string
 				if b, ok := val.([]byte); ok {
 					m[name] = string(b)
 				} else {
 					m[name] = val
 				}
 			}
-			// 设置到 *map[string]interface{}
+			// Set to *map[string]interface{}
 			reflect.ValueOf(res).Elem().Set(reflect.ValueOf(m))
 			return 1, nil
 		}
@@ -349,7 +349,7 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			m := make(map[string]interface{}, len(fi.Fields))
 			for i, name := range fi.Fields {
 				val := vals[i]
-				// 将[]byte转换为string
+				// Convert []byte to string
 				if b, ok := val.([]byte); ok {
 					m[name] = string(b)
 				} else {
@@ -379,15 +379,15 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 	}
 
 	if item != nil {
-		// struct类型
+		// struct type
 		if rtElem.Kind() == reflect.Struct {
 			if args[0].Type() == _fields {
 				args = args[1:]
 			}
-			// map类型
+			// map type
 			// } else if rt.Kind() == reflect.Map {
 			// TODO
-			// 其他类型
+			// other types
 		} else {
 			args = args[1:]
 		}
@@ -407,7 +407,7 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			item.Elem = res
 		}
 
-		// struct类型
+		// struct type
 		if rtElem.Kind() == reflect.Struct {
 			s := rtElem.(reflect2.StructType)
 
@@ -454,12 +454,12 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 					})
 				}
 			}
-			// map类型
+			// map type
 			// } else if rt.Kind() == reflect.Map {
 			// TODO
-			// 其他类型
+			// other types
 		} else {
-			// 必须有fields且为1
+			// Must have fields and be 1
 			if args[0].Type() != _fields {
 				return 0, errors.New("argument 3 need ONE Fields(\"name\") with ONE field")
 			}
@@ -547,12 +547,12 @@ func (t *BormTable) InsertIgnore(objs interface{}, args ...BormItem) (int, error
 		}
 	}
 
-	// 检查是否为V类型（map[string]interface{}）
+	// Check if it's V type (map[string]interface{})
 	if m, ok := objs.(V); ok {
 		return t.insertMapWithPrefix("insert ignore into ", m, args...)
 	}
 
-	// 检查是否为通用map类型
+	// Check if it's a generic map type
 	rt := reflect2.TypeOf(objs)
 	if rt.Kind() == reflect.Map {
 		mapType := rt.(reflect2.MapType)
@@ -562,7 +562,7 @@ func (t *BormTable) InsertIgnore(objs interface{}, args ...BormItem) (int, error
 		return t.insertGenericMapWithPrefix("insert ignore into ", objs, mapType, args...)
 	}
 
-	// 处理结构体类型
+	// Handle struct type
 	return t.insertStructWithPrefix("insert ignore into ", objs, args...)
 }
 
@@ -575,12 +575,12 @@ func (t *BormTable) ReplaceInto(objs interface{}, args ...BormItem) (int, error)
 		}
 	}
 
-	// 检查是否为V类型（map[string]interface{}）
+	// Check if it's V type (map[string]interface{})
 	if m, ok := objs.(V); ok {
 		return t.insertMapWithPrefix("replace into ", m, args...)
 	}
 
-	// 检查是否为通用map类型
+	// Check if it's a generic map type
 	rt := reflect2.TypeOf(objs)
 	if rt.Kind() == reflect.Map {
 		mapType := rt.(reflect2.MapType)
@@ -590,7 +590,7 @@ func (t *BormTable) ReplaceInto(objs interface{}, args ...BormItem) (int, error)
 		return t.insertGenericMapWithPrefix("replace into ", objs, mapType, args...)
 	}
 
-	// 处理结构体类型
+	// Handle struct type
 	return t.insertStructWithPrefix("replace into ", objs, args...)
 }
 
@@ -603,12 +603,12 @@ func (t *BormTable) Insert(objs interface{}, args ...BormItem) (int, error) {
 		}
 	}
 
-	// 检查是否为V类型（map[string]interface{}）
+	// Check if it's V type (map[string]interface{})
 	if m, ok := objs.(V); ok {
 		return t.insertMap(m, args...)
 	}
 
-	// 检查是否为通用map类型
+	// Check if it's a generic map type
 	rt := reflect2.TypeOf(objs)
 	if rt.Kind() == reflect.Map {
 		mapType := rt.(reflect2.MapType)
@@ -618,11 +618,11 @@ func (t *BormTable) Insert(objs interface{}, args ...BormItem) (int, error) {
 		return t.insertGenericMap(objs, mapType, args...)
 	}
 
-	// 处理结构体类型
+	// Handle struct type
 	return t.insertStruct(objs, args...)
 }
 
-// insertMap 处理V类型（map[string]interface{}）的插入
+// insertMap handles insertion of V type (map[string]interface{})
 func (t *BormTable) insertMap(m V, args ...BormItem) (int, error) {
 	var sb strings.Builder
 	var stmtArgs []interface{}
@@ -631,28 +631,28 @@ func (t *BormTable) insertMap(m V, args ...BormItem) (int, error) {
 	fieldEscape(&sb, t.Name)
 	sb.WriteString(" (")
 
-	// 检查是否有Fields参数
+	// Check if there are Fields parameters
 	hasFields := len(args) > 0 && args[0].Type() == _fields
 	var fieldsToProcess []string
 
 	if hasFields {
 		fi := args[0].(*fieldsItem)
 		fieldsToProcess = fi.Fields
-		args = args[1:] // 移除Fields参数
+		args = args[1:] // Remove Fields parameter
 	} else {
-		// 处理所有map字段
+		// Process all map fields
 		for k, v := range m {
 			if v != nil {
 				fieldsToProcess = append(fieldsToProcess, k)
 			}
 		}
-		// 检查空map
+		// Check empty map
 		if len(fieldsToProcess) == 0 {
 			return 0, errors.New("empty map: no fields to insert")
 		}
 	}
 
-	// 构建字段列表
+	// Build field list
 	for i, field := range fieldsToProcess {
 		v := m[field]
 		if v != nil {
@@ -665,7 +665,7 @@ func (t *BormTable) insertMap(m V, args ...BormItem) (int, error) {
 
 	sb.WriteString(") values (")
 
-	// 构建VALUES部分
+	// Build VALUES section
 	for i, field := range fieldsToProcess {
 		v := m[field]
 		if v != nil {
@@ -682,7 +682,7 @@ func (t *BormTable) insertMap(m V, args ...BormItem) (int, error) {
 	}
 	sb.WriteString(")")
 
-	// 构建其他条件
+	// Build other conditions
 	for _, arg := range args {
 		arg.BuildSQL(&sb)
 		arg.BuildArgs(&stmtArgs)
@@ -702,7 +702,7 @@ func (t *BormTable) insertMap(m V, args ...BormItem) (int, error) {
 	return int(affected), err
 }
 
-// insertGenericMap 处理通用map类型的插入
+// insertGenericMap handles insertion of generic map types
 func (t *BormTable) insertGenericMap(obj interface{}, mapType reflect2.MapType, args ...BormItem) (int, error) {
 	var sb strings.Builder
 	var stmtArgs []interface{}
@@ -711,11 +711,11 @@ func (t *BormTable) insertGenericMap(obj interface{}, mapType reflect2.MapType, 
 	fieldEscape(&sb, t.Name)
 	sb.WriteString(" (")
 
-	// 使用reflect包获取map的迭代器
+	// Use reflect package to get map iterator
 	rv := reflect.ValueOf(obj)
 	mapIter := rv.MapRange()
 
-	// 用于存储字段信息的临时结构
+	// Temporary structure for storing field information
 	type mapFieldData struct {
 		key   string
 		value interface{}
@@ -723,7 +723,7 @@ func (t *BormTable) insertGenericMap(obj interface{}, mapType reflect2.MapType, 
 
 	var fieldDataList []mapFieldData
 
-	// 收集map中的所有字段
+	// Collect all fields from map
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
@@ -734,12 +734,12 @@ func (t *BormTable) insertGenericMap(obj interface{}, mapType reflect2.MapType, 
 		})
 	}
 
-	// 按key排序，确保字段顺序一致
+	// Sort by key to ensure consistent field order
 	sort.Slice(fieldDataList, func(i, j int) bool {
 		return fieldDataList[i].key < fieldDataList[j].key
 	})
 
-	// 构建字段列表
+	// Build field list
 	for i, fieldData := range fieldDataList {
 		if i > 0 {
 			sb.WriteString(",")
@@ -748,7 +748,7 @@ func (t *BormTable) insertGenericMap(obj interface{}, mapType reflect2.MapType, 
 	}
 	sb.WriteString(") values (")
 
-	// 构建VALUES部分
+	// Build VALUES section
 	for i, fieldData := range fieldDataList {
 		if i > 0 {
 			sb.WriteString(",")
@@ -758,7 +758,7 @@ func (t *BormTable) insertGenericMap(obj interface{}, mapType reflect2.MapType, 
 	}
 	sb.WriteString(")")
 
-	// 构建其他条件
+	// Build other conditions
 	for _, arg := range args {
 		arg.BuildSQL(&sb)
 		arg.BuildArgs(&stmtArgs)
@@ -778,7 +778,7 @@ func (t *BormTable) insertGenericMap(obj interface{}, mapType reflect2.MapType, 
 	return int(affected), err
 }
 
-// insertStruct 处理结构体类型的插入
+// insertStruct handles insertion of struct types
 func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error) {
 	var (
 		item     *DataBindingItem
@@ -794,12 +794,12 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 	}
 
 	if item != nil {
-		// 使用缓存的SQL，但需要重新构建参数
+		// Use cached SQL, but need to rebuild parameters
 		for _, arg := range args {
 			arg.BuildArgs(&stmtArgs)
 		}
 	} else {
-		// 构建新的SQL
+		// Build new SQL
 		item = &DataBindingItem{}
 		var sb strings.Builder
 		sb.WriteString("insert into ")
@@ -830,7 +830,7 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 		var cols []reflect2.StructField
 
 		// Fields or None
-		// struct类型
+		// struct type
 		if rt.Kind() != reflect.Struct {
 			return 0, errors.New("non-structure type not supported yet")
 		}
@@ -881,12 +881,12 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 			sb.WriteString(") values (")
 		}
 
-		// 检查是否有字段要插入
+		// Check if there are fields to insert
 		if len(cols) == 0 {
 			return 0, errors.New("no fields to insert")
 		}
 
-		// 构建VALUES部分的占位符模板（不包含括号，因为前面已经写了" values ("）
+		// Build placeholder template for VALUES section (without parentheses, as " values (" was already written)
 		valuesTemplate := ""
 		for i := range cols {
 			if i > 0 {
@@ -896,7 +896,7 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 		}
 
 		if isArray {
-			// 批量插入：为每个元素添加VALUES
+			// Batch insert: add VALUES for each element
 			sliceType := reflect2.TypeOf(objs).(reflect2.PtrType).Elem().(reflect2.SliceType)
 			length := sliceType.UnsafeLengthOf(reflect2.PtrOf(objs))
 			for i := 0; i < length; i++ {
@@ -910,7 +910,7 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 				t.inputArgs(&stmtArgs, cols, rtPtr, s, isPtrArray, elemPtr)
 			}
 		} else {
-			// 单条插入
+			// Single insert
 			sb.WriteString(valuesTemplate)
 			t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
 		}
@@ -926,7 +926,7 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 		if t.Cfg.Reuse {
 			callSite := getCallSite()
 			shapeKey := buildShapeKey(callSite.Key, "Insert", args)
-			// 存字段列，避免二次反射
+			// Store field columns to avoid second reflection
 			item := &DataBindingItem{Cols: make([]interface{}, len(cols))}
 			for i := range cols {
 				item.Cols[i] = cols[i]
@@ -944,7 +944,7 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 		return 0, err
 	}
 
-	// 处理BormLastId字段
+	// Handle BormLastId field
 	rt := reflect2.TypeOf(objs)
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.(reflect2.PtrType).Elem()
@@ -961,7 +961,7 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 	return int(row), nil
 }
 
-// insertMapWithPrefix 处理V类型（map[string]interface{}）的插入，支持前缀
+// insertMapWithPrefix handles insertion of V type (map[string]interface{}), supports prefix
 func (t *BormTable) insertMapWithPrefix(prefix string, m V, args ...BormItem) (int, error) {
 	var sb strings.Builder
 	var stmtArgs []interface{}
@@ -970,28 +970,28 @@ func (t *BormTable) insertMapWithPrefix(prefix string, m V, args ...BormItem) (i
 	fieldEscape(&sb, t.Name)
 	sb.WriteString(" (")
 
-	// 检查是否有Fields参数
+	// Check if there are Fields parameters
 	hasFields := len(args) > 0 && args[0].Type() == _fields
 	var fieldsToProcess []string
 
 	if hasFields {
 		fi := args[0].(*fieldsItem)
 		fieldsToProcess = fi.Fields
-		args = args[1:] // 移除Fields参数
+		args = args[1:] // Remove Fields parameter
 	} else {
-		// 处理所有map字段
+		// Process all map fields
 		for k, v := range m {
 			if v != nil {
 				fieldsToProcess = append(fieldsToProcess, k)
 			}
 		}
-		// 检查空map
+		// Check empty map
 		if len(fieldsToProcess) == 0 {
 			return 0, errors.New("empty map: no fields to insert")
 		}
 	}
 
-	// 构建字段列表
+	// Build field list
 	for i, field := range fieldsToProcess {
 		v := m[field]
 		if v != nil {
@@ -1004,7 +1004,7 @@ func (t *BormTable) insertMapWithPrefix(prefix string, m V, args ...BormItem) (i
 
 	sb.WriteString(") values (")
 
-	// 构建VALUES部分
+	// Build VALUES section
 	for i, field := range fieldsToProcess {
 		v := m[field]
 		if v != nil {
@@ -1021,7 +1021,7 @@ func (t *BormTable) insertMapWithPrefix(prefix string, m V, args ...BormItem) (i
 	}
 	sb.WriteString(")")
 
-	// 构建其他条件
+	// Build other conditions
 	for _, arg := range args {
 		arg.BuildSQL(&sb)
 		arg.BuildArgs(&stmtArgs)
@@ -1041,7 +1041,7 @@ func (t *BormTable) insertMapWithPrefix(prefix string, m V, args ...BormItem) (i
 	return int(affected), err
 }
 
-// insertGenericMapWithPrefix 处理通用map类型的插入，支持前缀
+// insertGenericMapWithPrefix handles insertion of generic map types, supports prefix
 func (t *BormTable) insertGenericMapWithPrefix(prefix string, obj interface{}, mapType reflect2.MapType, args ...BormItem) (int, error) {
 	var sb strings.Builder
 	var stmtArgs []interface{}
@@ -1050,11 +1050,11 @@ func (t *BormTable) insertGenericMapWithPrefix(prefix string, obj interface{}, m
 	fieldEscape(&sb, t.Name)
 	sb.WriteString(" (")
 
-	// 使用reflect包获取map的迭代器
+	// Use reflect package to get map iterator
 	rv := reflect.ValueOf(obj)
 	mapIter := rv.MapRange()
 
-	// 用于存储字段信息的临时结构
+	// Temporary structure for storing field information
 	type mapFieldData struct {
 		key   string
 		value interface{}
@@ -1062,7 +1062,7 @@ func (t *BormTable) insertGenericMapWithPrefix(prefix string, obj interface{}, m
 
 	var fieldDataList []mapFieldData
 
-	// 收集map中的所有字段
+	// Collect all fields from map
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
@@ -1073,12 +1073,12 @@ func (t *BormTable) insertGenericMapWithPrefix(prefix string, obj interface{}, m
 		})
 	}
 
-	// 按key排序，确保字段顺序一致
+	// Sort by key to ensure consistent field order
 	sort.Slice(fieldDataList, func(i, j int) bool {
 		return fieldDataList[i].key < fieldDataList[j].key
 	})
 
-	// 构建字段列表
+	// Build field list
 	for i, fieldData := range fieldDataList {
 		if i > 0 {
 			sb.WriteString(",")
@@ -1087,7 +1087,7 @@ func (t *BormTable) insertGenericMapWithPrefix(prefix string, obj interface{}, m
 	}
 	sb.WriteString(") values (")
 
-	// 构建VALUES部分
+	// Build VALUES section
 	for i, fieldData := range fieldDataList {
 		if i > 0 {
 			sb.WriteString(",")
@@ -1097,7 +1097,7 @@ func (t *BormTable) insertGenericMapWithPrefix(prefix string, obj interface{}, m
 	}
 	sb.WriteString(")")
 
-	// 构建其他条件
+	// Build other conditions
 	for _, arg := range args {
 		arg.BuildSQL(&sb)
 		arg.BuildArgs(&stmtArgs)
@@ -1117,7 +1117,7 @@ func (t *BormTable) insertGenericMapWithPrefix(prefix string, obj interface{}, m
 	return int(affected), err
 }
 
-// insertStructWithPrefix 处理结构体类型的插入，支持前缀
+// insertStructWithPrefix handles insertion of struct types, supports prefix
 func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args ...BormItem) (int, error) {
 	var (
 		item     *DataBindingItem
@@ -1133,21 +1133,35 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 	}
 
 	if item != nil {
-		// 使用缓存的SQL，但需要重新构建参数
+		// Use cached SQL, but need to rebuild parameters
 		for _, arg := range args {
 			arg.BuildArgs(&stmtArgs)
 		}
 	} else {
-		// 构建新的SQL
+		// Build new SQL
 		item = &DataBindingItem{}
 		var sb strings.Builder
 		sb.WriteString(prefix)
 		fieldEscape(&sb, t.Name)
 
 		rt := reflect2.TypeOf(objs)
+		var isArray bool
+		var isPtrArray bool
+		var rtPtr reflect2.Type
 		switch rt.Kind() {
 		case reflect.Ptr:
 			rt = rt.(reflect2.PtrType).Elem()
+			if rt.Kind() == reflect.Slice {
+				isArray = true
+				rtElem := rt.(reflect2.SliceType).Elem()
+				if rtElem.Kind() == reflect.Ptr {
+					rtPtr = rtElem
+					rt = rtElem.(reflect2.PtrType).Elem()
+					isPtrArray = true
+				} else {
+					rt = rtElem
+				}
+			}
 		default:
 			return 0, errors.New("argument 2 should be map or ptr")
 		}
@@ -1155,7 +1169,7 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 		var cols []reflect2.StructField
 
 		// Fields or None
-		// struct类型
+		// struct type
 		if rt.Kind() != reflect.Struct {
 			return 0, errors.New("non-structure type not supported yet")
 		}
@@ -1206,21 +1220,40 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 			sb.WriteString(") values (")
 		}
 
-		// 检查是否有字段要插入
+		// Check if there are fields to insert
 		if len(cols) == 0 {
 			return 0, errors.New("no fields to insert")
 		}
 
-		// 构建VALUES部分的占位符
+		// Build placeholder template for VALUES section (without parentheses, as " values (" was already written)
+		valuesTemplate := ""
 		for i := range cols {
 			if i > 0 {
-				sb.WriteString(",")
+				valuesTemplate += ","
 			}
-			sb.WriteString("?")
+			valuesTemplate += "?"
+		}
+
+		if isArray {
+			// Batch insert: add VALUES for each element
+			sliceType := reflect2.TypeOf(objs).(reflect2.PtrType).Elem().(reflect2.SliceType)
+			length := sliceType.UnsafeLengthOf(reflect2.PtrOf(objs))
+			for i := 0; i < length; i++ {
+				if i > 0 {
+					sb.WriteString(",")
+				}
+				sb.WriteString("(")
+				sb.WriteString(valuesTemplate)
+				sb.WriteString(")")
+				elemPtr := sliceType.UnsafeGetIndex(reflect2.PtrOf(objs), i)
+				t.inputArgs(&stmtArgs, cols, rtPtr, s, isPtrArray, elemPtr)
+			}
+		} else {
+			// Single insert
+			sb.WriteString(valuesTemplate)
+			t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
 		}
 		sb.WriteString(")")
-
-		t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
 
 		for _, arg := range args {
 			arg.BuildSQL(&sb)
@@ -1232,7 +1265,7 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 		if t.Cfg.Reuse {
 			callSite := getCallSite()
 			shapeKey := buildShapeKey(callSite.Key, "Insert", args)
-			// 存字段列，避免二次反射
+			// Store field columns to avoid second reflection
 			item := &DataBindingItem{Cols: make([]interface{}, len(cols))}
 			for i := range cols {
 				item.Cols[i] = cols[i]
@@ -1250,7 +1283,7 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 		return 0, err
 	}
 
-	// 处理BormLastId字段
+	// Handle BormLastId field
 	rt := reflect2.TypeOf(objs)
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.(reflect2.PtrType).Elem()
@@ -1280,12 +1313,12 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 		return 0, errors.New("argument 2 cannot be omitted")
 	}
 
-	// 检查是否为V类型（map[string]interface{}）
+	// Check if it's V type (map[string]interface{})
 	if m, ok := obj.(V); ok {
 		return t.updateMap(m, args...)
 	}
 
-	// 检查是否为通用map类型
+	// Check if it's a generic map type
 	rt := reflect2.TypeOf(obj)
 	if rt.Kind() == reflect.Map {
 		mapType := rt.(reflect2.MapType)
@@ -1295,11 +1328,11 @@ func (t *BormTable) Update(obj interface{}, args ...BormItem) (int, error) {
 		return t.updateGenericMap(obj, mapType, args...)
 	}
 
-	// 处理结构体类型
+	// Handle struct type
 	return t.updateStruct(obj, args...)
 }
 
-// updateMap 处理V类型（map[string]interface{}）的更新
+// updateMap handles update of V type (map[string]interface{})
 func (t *BormTable) updateMap(m V, args ...BormItem) (int, error) {
 	var sb strings.Builder
 	var stmtArgs []interface{}
@@ -1308,16 +1341,16 @@ func (t *BormTable) updateMap(m V, args ...BormItem) (int, error) {
 	fieldEscape(&sb, t.Name)
 	sb.WriteString(" set ")
 
-	// 检查是否有Fields参数
+	// Check if there are Fields parameters
 	hasFields := len(args) > 0 && args[0].Type() == _fields
 	var fieldsToProcess []string
 
 	if hasFields {
 		fi := args[0].(*fieldsItem)
 		fieldsToProcess = fi.Fields
-		args = args[1:] // 移除Fields参数
+		args = args[1:] // Remove Fields parameter
 	} else {
-		// 处理所有map字段
+		// Process all map fields
 		for k, v := range m {
 			if v != nil {
 				fieldsToProcess = append(fieldsToProcess, k)
@@ -1325,7 +1358,7 @@ func (t *BormTable) updateMap(m V, args ...BormItem) (int, error) {
 		}
 	}
 
-	// 构建SET部分
+	// Build SET section
 	for i, field := range fieldsToProcess {
 		v := m[field]
 		if v != nil {
@@ -1343,7 +1376,7 @@ func (t *BormTable) updateMap(m V, args ...BormItem) (int, error) {
 		}
 	}
 
-	// 构建WHERE条件
+	// Build WHERE conditions
 	for _, arg := range args {
 		arg.BuildSQL(&sb)
 		arg.BuildArgs(&stmtArgs)
@@ -1363,7 +1396,7 @@ func (t *BormTable) updateMap(m V, args ...BormItem) (int, error) {
 	return int(affected), err
 }
 
-// updateGenericMap 处理通用map类型的更新
+// updateGenericMap handles update of generic map types
 func (t *BormTable) updateGenericMap(obj interface{}, mapType reflect2.MapType, args ...BormItem) (int, error) {
 	var sb strings.Builder
 	var stmtArgs []interface{}
@@ -1372,11 +1405,11 @@ func (t *BormTable) updateGenericMap(obj interface{}, mapType reflect2.MapType, 
 	fieldEscape(&sb, t.Name)
 	sb.WriteString(" set ")
 
-	// 使用reflect包获取map的迭代器
+	// Use reflect package to get map iterator
 	rv := reflect.ValueOf(obj)
 	mapIter := rv.MapRange()
 
-	// 用于存储字段信息的临时结构
+	// Temporary structure for storing field information
 	type mapFieldData struct {
 		key   string
 		value interface{}
@@ -1384,7 +1417,7 @@ func (t *BormTable) updateGenericMap(obj interface{}, mapType reflect2.MapType, 
 
 	var fieldDataList []mapFieldData
 
-	// 收集map中的所有字段
+	// Collect all fields from map
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
@@ -1395,12 +1428,12 @@ func (t *BormTable) updateGenericMap(obj interface{}, mapType reflect2.MapType, 
 		})
 	}
 
-	// 按key排序，确保字段顺序一致
+	// Sort by key to ensure consistent field order
 	sort.Slice(fieldDataList, func(i, j int) bool {
 		return fieldDataList[i].key < fieldDataList[j].key
 	})
 
-	// 构建SET部分
+	// Build SET section
 	for i, fieldData := range fieldDataList {
 		if i > 0 {
 			sb.WriteString(",")
@@ -1410,7 +1443,7 @@ func (t *BormTable) updateGenericMap(obj interface{}, mapType reflect2.MapType, 
 		stmtArgs = append(stmtArgs, fieldData.value)
 	}
 
-	// 构建WHERE条件
+	// Build WHERE conditions
 	for _, arg := range args {
 		arg.BuildSQL(&sb)
 		arg.BuildArgs(&stmtArgs)
@@ -1430,9 +1463,9 @@ func (t *BormTable) updateGenericMap(obj interface{}, mapType reflect2.MapType, 
 	return int(affected), err
 }
 
-// updateStruct 处理结构体类型的更新
+// updateStruct handles update of struct types
 func (t *BormTable) updateStruct(obj interface{}, args ...BormItem) (int, error) {
-	// 对于结构体类型，暂时不使用缓存
+	// For struct types, cache is not used for now
 	rt := reflect2.TypeOf(obj)
 	useCache := t.Cfg.Reuse && rt.Kind() == reflect.Ptr && rt.(reflect2.PtrType).Elem().Kind() == reflect.Struct
 
@@ -1450,10 +1483,10 @@ func (t *BormTable) updateStruct(obj interface{}, args ...BormItem) (int, error)
 	}
 
 	if item != nil {
-		// 走缓存路径时，仍需按对象构建参数
-		// 此处省略 SQL 重建
+		// When using cache path, still need to build parameters by object
+		// SQL reconstruction is omitted here
 	} else {
-		// 构建新的SQL
+		// Build new SQL
 		item = &DataBindingItem{}
 		var sb strings.Builder
 		sb.WriteString("update ")
@@ -1471,7 +1504,7 @@ func (t *BormTable) updateStruct(obj interface{}, args ...BormItem) (int, error)
 		var cols []reflect2.StructField
 
 		// Fields or None
-		// struct类型
+		// struct type
 		if rt.Kind() != reflect.Struct {
 			return 0, errors.New("non-structure type not supported yet")
 		}
@@ -1577,12 +1610,12 @@ func (t *BormTable) Delete(args ...BormItem) (int, error) {
 	}
 
 	if item != nil {
-		// 使用缓存的SQL和参数
+		// Use cached SQL and parameters
 		for _, arg := range args {
 			arg.BuildArgs(&stmtArgs)
 		}
 	} else {
-		// 构建新的SQL
+		// Build new SQL
 		item = &DataBindingItem{}
 		var sb strings.Builder
 		sb.WriteString("delete from ")
@@ -1624,7 +1657,7 @@ func (t *BormTable) inputArgs(stmtArgs *[]interface{}, cols []reflect2.StructFie
 			v = col.Get(s.PackEFace(x))
 		}
 
-		// 时间类型特殊处理
+		// Special handling for time type
 		if col.Type().String() == "time.Time" {
 			if t.Cfg.ToTimestamp {
 				v = v.(*time.Time).Unix()
@@ -1650,7 +1683,7 @@ type BormTable struct {
 	Name          string
 	Cfg           Config
 	ctx           context.Context
-	fieldMapCache sync.Map // 字段映射缓存
+	fieldMapCache sync.Map // Field mapping cache
 }
 
 func fieldEscape(sb *strings.Builder, field string) {
@@ -1660,43 +1693,43 @@ func fieldEscape(sb *strings.Builder, field string) {
 	if !strings.ContainsAny(field, ",( `.") {
 		sb.WriteString("`" + field + "`")
 	} else {
-		// TODO: 处理alias场景
+		// TODO: Handle alias scenarios
 		sb.WriteString(field)
 	}
 }
 
 func (t *BormTable) getStructFieldMap(s reflect2.StructType) map[string]reflect2.StructField {
-	// 检查缓存
+	// Check cache
 	if cached, ok := t.fieldMapCache.Load(s); ok {
 		return cached.(map[string]reflect2.StructField)
 	}
 
-	// 收集字段
+	// Collect fields
 	m := t.collectStructFields(s, "")
 
-	// 缓存结果
+	// Cache result
 	t.fieldMapCache.Store(s, m)
 	return m
 }
 
-// collectStructFields 递归收集结构体字段，支持embedded struct和字段忽略
+// collectStructFields recursively collects struct fields, supports embedded struct and field ignoring
 func (t *BormTable) collectStructFields(s reflect2.StructType, prefix string) map[string]reflect2.StructField {
 	m := make(map[string]reflect2.StructField)
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
 		ft := f.Tag().Get("borm")
 
-		// 检查是否忽略字段
+		// Check if field should be ignored
 		if ft == "-" {
 			continue
 		}
 
-		// 处理embedded struct
+		// Handle embedded struct
 		if f.Anonymous() {
 			embeddedType := f.Type()
 			if embeddedType.Kind() == reflect.Struct {
 				if embeddedStructType, ok := embeddedType.(reflect2.StructType); ok {
-					// 递归收集embedded struct的字段
+					// Recursively collect fields from embedded struct
 					embeddedFields := t.collectStructFields(embeddedStructType, prefix)
 					for k, v := range embeddedFields {
 						m[k] = v
@@ -1706,7 +1739,7 @@ func (t *BormTable) collectStructFields(s reflect2.StructType, prefix string) ma
 			continue
 		}
 
-		// 处理普通字段
+		// Handle normal fields
 		if ft != "" {
 			m[ft] = f
 		} else if t.Cfg.UseNameWhenTagEmpty {
@@ -1716,14 +1749,14 @@ func (t *BormTable) collectStructFields(s reflect2.StructType, prefix string) ma
 	return m
 }
 
-// FieldInfo 通用字段信息接口
+// FieldInfo generic field information interface
 type FieldInfo interface {
 	GetName() string
 	GetValue(ptr unsafe.Pointer) interface{}
 	GetType() reflect2.Type
 }
 
-// StructFieldInfo 结构体字段信息
+// StructFieldInfo struct field information
 type StructFieldInfo struct {
 	Field reflect2.StructField
 }
@@ -1740,7 +1773,7 @@ func (f *StructFieldInfo) GetType() reflect2.Type {
 	return f.Field.Type()
 }
 
-// MapFieldInfo map字段信息
+// MapFieldInfo map field information
 type MapFieldInfo struct {
 	Key   string
 	Value interface{}
@@ -1766,7 +1799,7 @@ type BormItem interface {
 	BuildArgs(*[]interface{})
 }
 
-// collectFieldsGeneric 通用字段收集函数
+// collectFieldsGeneric generic field collection function
 func (t *BormTable) collectFieldsGeneric(objs interface{}, sb *strings.Builder, fieldInfos *[]FieldInfo) error {
 	rt := reflect2.TypeOf(objs)
 
@@ -1780,7 +1813,7 @@ func (t *BormTable) collectFieldsGeneric(objs interface{}, sb *strings.Builder, 
 	}
 }
 
-// collectStructFieldsGeneric 收集结构体字段
+// collectStructFieldsGeneric collects struct fields
 func (t *BormTable) collectStructFieldsGeneric(objs interface{}, structType reflect2.StructType, sb *strings.Builder, fieldInfos *[]FieldInfo) error {
 	ptr := reflect2.PtrOf(objs)
 
@@ -1788,20 +1821,20 @@ func (t *BormTable) collectStructFieldsGeneric(objs interface{}, structType refl
 		field := structType.Field(i)
 		ft := field.Tag().Get("borm")
 
-		// 检查是否忽略字段
+		// Check if field should be ignored
 		if ft == "-" {
 			continue
 		}
 
-		// 处理embedded struct
+		// Handle embedded struct
 		if field.Anonymous() {
 			embeddedType := field.Type()
 			if embeddedType.Kind() == reflect.Struct {
 				if embeddedStructType, ok := embeddedType.(reflect2.StructType); ok {
-					// 递归收集embedded struct的字段
+					// Recursively collect fields from embedded struct
 					embeddedPtr := unsafe.Pointer(uintptr(ptr) + field.Offset())
 					embeddedObj := embeddedStructType.New()
-					// 将embedded对象复制到正确的位置
+					// Copy embedded object to correct position
 					*(*unsafe.Pointer)(unsafe.Pointer(&embeddedObj)) = embeddedPtr
 					err := t.collectStructFieldsGeneric(embeddedObj, embeddedStructType, sb, fieldInfos)
 					if err != nil {
@@ -1812,7 +1845,7 @@ func (t *BormTable) collectStructFieldsGeneric(objs interface{}, structType refl
 			continue
 		}
 
-		// 处理普通字段
+		// Handle normal fields
 		var fieldName string
 		if ft != "" {
 			fieldName = ft
@@ -1831,18 +1864,18 @@ func (t *BormTable) collectStructFieldsGeneric(objs interface{}, structType refl
 	return nil
 }
 
-// collectMapFieldsGeneric 收集map字段
+// collectMapFieldsGeneric collects map fields
 func (t *BormTable) collectMapFieldsGeneric(objs interface{}, mapType reflect2.MapType, sb *strings.Builder, fieldInfos *[]FieldInfo) error {
 	keyType := mapType.Key()
 	if keyType.Kind() != reflect.String {
 		return errors.New("map key must be string type")
 	}
 
-	// 使用reflect包获取map的迭代器
+	// Use reflect package to get map iterator
 	rv := reflect.ValueOf(objs)
 	mapIter := rv.MapRange()
 
-	// 用于存储字段信息的临时结构
+	// Temporary structure for storing field information
 	type mapFieldData struct {
 		key       string
 		value     interface{}
@@ -1851,7 +1884,7 @@ func (t *BormTable) collectMapFieldsGeneric(objs interface{}, mapType reflect2.M
 
 	var fieldDataList []mapFieldData
 
-	// 收集map中的所有字段
+	// Collect all fields from map
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
@@ -1863,12 +1896,12 @@ func (t *BormTable) collectMapFieldsGeneric(objs interface{}, mapType reflect2.M
 		})
 	}
 
-	// 按key排序，确保字段顺序一致
+	// Sort by key to ensure consistent field order
 	sort.Slice(fieldDataList, func(i, j int) bool {
 		return fieldDataList[i].key < fieldDataList[j].key
 	})
 
-	// 构建SQL和字段信息
+	// Build SQL and field information
 	for _, fieldData := range fieldDataList {
 		fieldEscape(sb, fieldData.key)
 		sb.WriteString(",")
@@ -2073,7 +2106,7 @@ func (o *orderByItem) BuildSQL(sb *strings.Builder) {
 		if i > 0 {
 			sb.WriteString(",")
 		}
-		// TODO: 带升降序关键词的字段转义
+		// TODO: Field escaping with ascending/descending keywords
 		fieldEscape(sb, order)
 	}
 }
@@ -2140,53 +2173,53 @@ func toUnix(year, month, day, hour, min, sec int) int64 {
 	return int64((365*year-719528+day-1+(year+3)/4-(year+99)/100+(year+399)/400+int([]int{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}[month-1])+leap)*86400 + hour*3600 + min*60 + sec)
 }
 
-// parseTimeString 优化的时间解析函数，智能检测格式
+// parseTimeString optimized time parsing function with intelligent format detection
 func parseTimeString(s string) (time.Time, error) {
 	if s == "" || s == "NULL" || s == "null" {
 		return time.Time{}, nil
 	}
 
-	// 处理MySQL无效日期格式 0000-00-00 和 0000-00-00 00:00:00
+	// Handle MySQL invalid date format 0000-00-00 and 0000-00-00 00:00:00
 	if strings.HasPrefix(s, "0000-00-00") {
 		return time.Time{}, nil
 	}
 
-	// 纯日期格式检测
+	// Pure date format detection
 	if len(s) == 10 && s[4] == '-' && s[7] == '-' {
 		return time.Parse("2006-01-02", s)
 	}
 
-	// 带时区的格式检测
+	// Timezone format detection
 	if len(s) > 10 {
-		// 检测是否包含时区信息
+		// Detect if timezone information is included
 		if s[len(s)-6] == '+' || s[len(s)-6] == '-' || s[len(s)-1] == 'Z' {
-			// 带纳秒的时区格式
+			// Timezone format with nanoseconds
 			if len(s) > 26 && s[19] == '.' {
 				return time.Parse(_timeLayoutWithNanoTZ, s)
 			}
-			// 带时区的格式
+			// Format with timezone
 			return time.Parse(_timeLayoutWithTZ, s)
 		}
-		// Z结尾的格式
+		// Format ending with Z
 		if s[len(s)-1] == 'Z' {
 			return time.Parse(_timeLayoutWithZ, s)
 		}
 	}
 
-	// 默认格式
+	// Default format
 	return time.Parse(_timeLayout, s)
 }
 
 func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsafe.Pointer, tmp string) error {
 	dk := dt.Kind()
 
-	// 时间格式(DATE/DATETIME) => number/time.Time
+	// Time format (DATE/DATETIME) => number/time.Time
 	if isTime || (dk >= reflect.Int && dk <= reflect.Float64) {
 		if isTime {
-			// 使用优化的时间解析函数
+			// Use optimized time parsing function
 			parsedTime, err := parseTimeString(tmp)
 			if err != nil {
-				// 尝试解析为时间戳
+				// Try to parse as timestamp
 				i64, parseErr := strconv.ParseInt(tmp, 10, 64)
 				if parseErr != nil {
 					return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
@@ -2197,7 +2230,7 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 			return nil
 		}
 
-		// 对于数字类型，先尝试解析时间字符串
+		// For numeric types, first try to parse time string
 		parsedTime, err := parseTimeString(tmp)
 		if err == nil {
 			ts := parsedTime.Unix()
@@ -2230,8 +2263,8 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 			return nil
 		}
 
-		// 如果时间解析失败，尝试直接解析为数字
-		// 对于浮点类型，使用ParseFloat
+		// If time parsing fails, try to parse directly as number
+		// For float types, use ParseFloat
 		if dk == reflect.Float32 || dk == reflect.Float64 {
 			f64, err := strconv.ParseFloat(tmp, 64)
 			if err != nil {
@@ -2244,8 +2277,8 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 			}
 			return nil
 		}
-		
-		// 对于整数类型，使用ParseInt
+
+		// For integer types, use ParseInt
 		i64, err := strconv.ParseInt(tmp, 10, 64)
 		if err != nil {
 			return fmt.Errorf("converting driver.Value type %s (%s) to a %s: %v", st.String(), tmp, dk, strconvErr(err))
@@ -2275,7 +2308,7 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 		return nil
 	}
 
-	// 非时间格式
+	// Non-time format
 	switch dk {
 	case reflect.Bool:
 		*(*bool)(ptrVal) = (tmp == "true")
@@ -2331,7 +2364,7 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 			*(*[]byte)(ptrVal) = reflect2.UnsafeCastString(tmp)
 			return nil
 		}
-		// TODO 自定义类型，尝试转换
+		// TODO custom types, try conversion
 		return fmt.Errorf("converting driver.Value type %s (%s) to a %s", st.String(), tmp, dt.String())
 	}
 	return nil
@@ -2343,14 +2376,18 @@ func (dest *scanner) Scan(src interface{}) error {
 		dt = dest.Type
 	)
 
-	// NULL值
+	// NULL value
 	if src == nil {
-		// 如果是指针类型，设置为nil
+		// If it's a pointer type, set to nil
 		if dt.Kind() == reflect.Ptr {
+			// Set to nil directly through pointer dereference
+			// dest.Val points to a pointer variable, we need to set that pointer variable to nil
 			ptrType := dt.(reflect2.PtrType)
-			ptrType.UnsafeSet(dest.Val, nil)
+			// Create an unsafe.Pointer of nil pointer
+			var nilPtr unsafe.Pointer
+			ptrType.UnsafeSet(dest.Val, nilPtr)
 		} else {
-			// 设置成默认值
+			// Set to default value
 			dt.UnsafeSet(dest.Val, dt.UnsafeNew())
 		}
 		return nil
@@ -2362,7 +2399,7 @@ func (dest *scanner) Scan(src interface{}) error {
 		dk = dt.Kind()
 	)
 
-	// 相同类型，直接赋值
+	// Same type, assign directly
 	if dk == sk {
 		dt.UnsafeSet(dest.Val, reflect2.PtrOf(src))
 		return nil
@@ -2480,7 +2517,7 @@ func (cx *ormCondEx) BuildArgs(stmtArgs *[]interface{}) {
 }
 
 /*
-   条件逻辑运算
+   Conditional logic operations
 */
 
 // And .
@@ -2546,7 +2583,7 @@ RETRY:
 		return &ormCond{Op: "1=1"}
 	case 1:
 		rt := reflect2.TypeOf(args[0])
-		// 如果第一个参数是数组，转化成interface数组
+		// If the first argument is an array, convert to interface array
 		if rt.Kind() == reflect.Slice {
 			len := rt.(reflect2.SliceType).UnsafeLengthOf(reflect2.PtrOf(args[0]))
 			argsAux := make([]interface{}, len)
@@ -2557,8 +2594,8 @@ RETRY:
 			args = argsAux
 			goto RETRY
 		} else {
-			// 在Reuse模式下，单条也使用In，保持一致性
-			// 这样可以避免缓存不一致问题，性能差距也不大
+			// In Reuse mode, single value also uses In to maintain consistency
+			// This avoids cache inconsistency issues, and the performance difference is minimal
 			var sb strings.Builder
 			sb.WriteString(" in (?)")
 			return &ormCond{Field: field, Op: sb.String(), Args: args}
@@ -2578,7 +2615,7 @@ RETRY:
 }
 
 /*
-	data-binding相关
+	data-binding related
 */
 
 // DataBindingItem .
@@ -2589,7 +2626,7 @@ type DataBindingItem struct {
 	Elem interface{}
 }
 
-// buildShapeKey 基于调用点key和参数形状构建复用key
+// buildShapeKey builds reuse key based on call site key and parameter shape
 func buildShapeKey(baseKey string, op string, args []BormItem) string {
 	var b strings.Builder
 	b.WriteString(baseKey)
@@ -2605,7 +2642,7 @@ func buildShapeKey(baseKey string, op string, args []BormItem) string {
 	return b.String()
 }
 
-// 优化后的缓存操作函数
+// Optimized cache operation functions
 func buildCacheKey(file string, line int) string {
 	builder := _cacheKeyPool.Get().(*strings.Builder)
 	builder.Reset()
@@ -2619,7 +2656,7 @@ func buildCacheKey(file string, line int) string {
 
 func getCallSite() *CallSite {
 	pc := make([]uintptr, 1)
-	runtime.Callers(2, pc) // 跳过getCallSite和调用者
+	runtime.Callers(2, pc) // Skip getCallSite and caller
 	callerPC := pc[0]
 
 	if cached, ok := _callSiteCache.Load(callerPC); ok {
@@ -2650,7 +2687,7 @@ func loadFromCache(file string, line int) *DataBindingItem {
 	return nil
 }
 
-// 优化版本：使用预缓存的调用位置
+// Optimized version: use pre-cached call location
 func storeToCacheOptimized(callSite *CallSite, item *DataBindingItem) {
 	_dataBindingCache.Store(callSite.Key, item)
 }
@@ -2679,7 +2716,7 @@ type CallSite struct {
 }
 
 /*
-Mock相关
+Mock related
 */
 var (
 	_mockData []*MockMatcher
