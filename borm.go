@@ -881,15 +881,19 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 			sb.WriteString(") values (")
 		}
 
-		// 构建VALUES部分的占位符模板
-		valuesTemplate := "("
+		// 检查是否有字段要插入
+		if len(cols) == 0 {
+			return 0, errors.New("no fields to insert")
+		}
+
+		// 构建VALUES部分的占位符模板（不包含括号，因为前面已经写了" values ("）
+		valuesTemplate := ""
 		for i := range cols {
 			if i > 0 {
 				valuesTemplate += ","
 			}
 			valuesTemplate += "?"
 		}
-		valuesTemplate += ")"
 
 		if isArray {
 			// 批量插入：为每个元素添加VALUES
@@ -899,7 +903,9 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 				if i > 0 {
 					sb.WriteString(",")
 				}
+				sb.WriteString("(")
 				sb.WriteString(valuesTemplate)
+				sb.WriteString(")")
 				elemPtr := sliceType.UnsafeGetIndex(reflect2.PtrOf(objs), i)
 				t.inputArgs(&stmtArgs, cols, rtPtr, s, isPtrArray, elemPtr)
 			}
@@ -908,6 +914,7 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 			sb.WriteString(valuesTemplate)
 			t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
 		}
+		sb.WriteString(")")
 
 		for _, arg := range args {
 			arg.BuildSQL(&sb)
@@ -1197,6 +1204,11 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 				cols = append(cols, f)
 			}
 			sb.WriteString(") values (")
+		}
+
+		// 检查是否有字段要插入
+		if len(cols) == 0 {
+			return 0, errors.New("no fields to insert")
 		}
 
 		// 构建VALUES部分的占位符
@@ -2327,12 +2339,12 @@ func scanFromString(isTime bool, st reflect2.Type, dt reflect2.Type, ptrVal unsa
 
 func (dest *scanner) Scan(src interface{}) error {
 	var (
-		st = reflect2.TypeOf(src)
+		st reflect2.Type
 		dt = dest.Type
 	)
 
 	// NULL值
-	if src == nil || st.UnsafeIsNil(reflect2.PtrOf(src)) {
+	if src == nil {
 		// 如果是指针类型，设置为nil
 		if dt.Kind() == reflect.Ptr {
 			ptrType := dt.(reflect2.PtrType)

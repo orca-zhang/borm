@@ -1263,7 +1263,7 @@ func TestScanner(t *testing.T) {
 
 			err := stringScanner.Scan(string("123.33"))
 			So(err, ShouldBeNil)
-			// float32有精度损失，使用近似比较
+			// float32 has precision loss, use approximate comparison
 			So(float64(f), ShouldAlmostEqual, 123.33, 0.001)
 		})
 
@@ -1715,128 +1715,128 @@ func TestMock(t *testing.T) {
 				Z1: 1551405784,
 			}
 
-			// 必须在_test.go里面设置mock
-			// 注意方法名需要带包名
+			// Must set mock in _test.go
+			// Note: method name needs to include package name
 			BormMock("test", "Select", "*.test", "", "", &o, 1, nil)
 
-			// 调用被测试函数
+			// Call the function under test
 			o1, n1, err := test(db)
 
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 1)
 			So(o1, ShouldResemble, o)
 
-			// 检查是否全部命中
+			// Check if all hits occurred
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
 
 		Convey("test Insert", func() {
-			// 必须在_test.go里面设置mock
-			// 注意方法名需要带包名
+			// Must set mock in _test.go
+			// Note: method name needs to include package name
 			BormMock("test", "Insert", "*.testInsert", "", "", nil, 10, nil)
 
-			// 调用被测试函数
+			// Call the function under test
 			n1, err := testInsert(db)
 
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 10)
 
-			// 检查是否全部命中
+			// Check if all hits occurred
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
 
 		Convey("test InsertIgnore", func() {
-			// 必须在_test.go里面设置mock
-			// 注意方法名需要带包名
+			// Must set mock in _test.go
+			// Note: method name needs to include package name
 			BormMock("test", "InsertIgnore", "*.testInsertIgnore", "", "", nil, 22, nil)
 
-			// 调用被测试函数
+			// Call the function under test
 			n1, err := testInsertIgnore(db)
 
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 22)
 
-			// 检查是否全部命中
+			// Check if all hits occurred
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
 
 		Convey("test ReplaceInto", func() {
-			// 必须在_test.go里面设置mock
-			// 注意方法名需要带包名
+			// Must set mock in _test.go
+			// Note: method name needs to include package name
 			BormMock("test", "ReplaceInto", "*.testReplaceInto", "", "", nil, 22, nil)
 
-			// 调用被测试函数
+			// Call the function under test
 			n1, err := testReplaceInto(db)
 
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 22)
 
-			// 检查是否全部命中
+			// Check if all hits occurred
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
 
 		Convey("test Update", func() {
-			// 必须在_test.go里面设置mock
-			// 注意方法名需要带包名
+			// Must set mock in _test.go
+			// Note: method name needs to include package name
 			BormMock("test", "Update", "*.testUpdate", "", "", nil, 233, nil)
 
-			// 调用被测试函数
+			// Call the function under test
 			n1, err := testUpdate(db)
 
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 233)
 
-			// 检查是否全部命中
+			// Check if all hits occurred
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
 
 		Convey("test Delete", func() {
-			// 必须在_test.go里面设置mock
-			// 注意方法名需要带包名
+			// Must set mock in _test.go
+			// Note: method name needs to include package name
 			BormMock("test", "Delete", "*.testDelete", "", "", nil, 88, nil)
 
-			// 调用被测试函数
+			// Call the function under test
 			n1, err := testDelete(db)
 
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 88)
 
-			// 检查是否全部命中
+			// Check if all hits occurred
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
 
 		Convey("test any", func() {
-			// 必须在_test.go里面设置mock
-			// 注意方法名需要带包名
+			// Must set mock in _test.go
+			// Note: method name needs to include package name
 			BormMock("test", "", "", "", "", nil, 111, nil)
 
-			// 调用被测试函数
+			// Call the function under test
 			n1, err := testDelete(db)
 
 			So(err, ShouldBeNil)
 			So(n1, ShouldEqual, 111)
 
-			// 检查是否全部命中
+			// Check if all hits occurred
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
 
 		Convey("test none", func() {
-			// 必须在_test.go里面设置mock
-			// 注意方法名需要带包名
+			// Must set mock in _test.go
+			// Note: method name needs to include package name
 			BormMock("test", "", "", "", "", nil, 111, nil)
 
-			// 检查是否未全部命中
+			// Check if not all hits occurred
 			err := BormMockFinish()
 			So(err, ShouldNotBeNil)
 
-			// 检查是否全部命中
+			// Check if all hits occurred
 			err = BormMockFinish()
 			So(err, ShouldBeNil)
 		})
@@ -1914,7 +1914,7 @@ func TestMisc(t *testing.T) {
 			w.BuildSQL(&sb)
 			w.BuildArgs(&stmtArgs)
 
-			// 在Reuse模式下，单值也使用in (?)保持缓存一致性
+			// In Reuse mode, single value also uses in (?) to maintain cache consistency
 			So(sb.String(), ShouldEqual, " where `id` in (?)")
 			So(len(stmtArgs), ShouldEqual, 1)
 		})
@@ -2569,16 +2569,16 @@ func TestMisc(t *testing.T) {
 	})
 }
 
-// TestMapSupport 测试Map类型支持功能
+// TestMapSupport tests Map type support functionality
 func TestMapSupport(t *testing.T) {
-	// 初始化数据库连接
+	// Initialize database connection
 	db, err := sql.Open("mysql", "root:semaphoredb@tcp(localhost:3306)/borm_test?charset=utf8mb4")
 	if err != nil {
 		t.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	// 创建测试表
+	// Create test table
 	createTableSQL := `
 	CREATE TABLE IF NOT EXISTS test_map (
 		id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2592,7 +2592,7 @@ func TestMapSupport(t *testing.T) {
 		t.Fatalf("Failed to create table: %v", err)
 	}
 
-	// 清理测试数据
+	// Clean up test data
 	defer func() {
 		db.Exec("DELETE FROM test_map")
 	}()
@@ -2600,7 +2600,7 @@ func TestMapSupport(t *testing.T) {
 	tbl := Table(db, "test_map").Debug()
 
 	t.Run("TestVTypeInsert", func(t *testing.T) {
-		// 使用V类型插入数据
+		// Insert data using V type
 		userMap := V{
 			"name":  "John Doe",
 			"age":   30,
@@ -2617,7 +2617,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestGenericMapInsert", func(t *testing.T) {
-		// 使用通用map类型插入数据
+		// Insert data using generic map type
 		userMap := map[string]interface{}{
 			"name":  "Jane Doe",
 			"age":   25,
@@ -2634,7 +2634,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestVTypeUpdate", func(t *testing.T) {
-		// 先插入一条数据
+		// Insert a record first
 		userMap := V{
 			"name":  "Update Test",
 			"age":   20,
@@ -2648,7 +2648,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected 1 row inserted, got %d", n)
 		}
 
-		// 更新数据
+		// Update data
 		updateMap := V{
 			"name": "Updated Name",
 			"age":  21,
@@ -2664,7 +2664,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestGenericMapUpdate", func(t *testing.T) {
-		// 先插入一条数据
+		// Insert a record first
 		userMap := V{
 			"name":  "Generic Update Test",
 			"age":   20,
@@ -2678,7 +2678,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected 1 row inserted, got %d", n)
 		}
 
-		// 更新数据
+		// Update data
 		updateMap := V{
 			"name": "Generic Updated Name",
 			"age":  21,
@@ -2694,7 +2694,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestSelectToMap", func(t *testing.T) {
-		// 先插入一条数据
+		// Insert a record first
 		userMap := V{
 			"name":  "Select Test",
 			"age":   30,
@@ -2708,7 +2708,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected 1 row inserted, got %d", n)
 		}
 
-		// 查询单条记录到map
+		// Query single record to map
 		var result V
 		n, err = tbl.Select(&result, Fields("name", "age", "email"), Where("email = ?", "select@example.com"))
 		if err != nil {
@@ -2729,7 +2729,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestSelectToMapSlice", func(t *testing.T) {
-		// 先插入多条数据
+		// Insert multiple records first
 		users := []V{
 			{"name": "User1", "age": 25, "email": "user1@example.com"},
 			{"name": "User2", "age": 26, "email": "user2@example.com"},
@@ -2745,7 +2745,7 @@ func TestMapSupport(t *testing.T) {
 			}
 		}
 
-		// 查询多条记录到map切片
+		// Query multiple records to map slice
 		var results []V
 		n, err := tbl.Select(&results, Fields("name", "age", "email"), Where("email LIKE ?", "user%@example.com"))
 		if err != nil {
@@ -2758,7 +2758,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected non-empty results slice")
 		}
 
-		// 验证结果
+		// Verify results
 		for _, result := range results {
 			if result["name"] == nil {
 				t.Errorf("Expected non-nil name")
@@ -2773,7 +2773,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestInsertIgnoreAndReplaceInto", func(t *testing.T) {
-		// 测试InsertIgnore
+		// Test InsertIgnore
 		userMap := V{
 			"name":  "Ignore Test",
 			"age":   30,
@@ -2788,7 +2788,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected 1 row inserted, got %d", n)
 		}
 
-		// 再次插入相同数据，应该被忽略
+		// Insert same data again, should be ignored
 		n, err = tbl.InsertIgnore(userMap)
 		if err != nil {
 			t.Errorf("InsertIgnore failed: %v", err)
@@ -2797,7 +2797,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected 0 rows inserted (ignored), got %d", n)
 		}
 
-		// 测试ReplaceInto
+		// Test ReplaceInto
 		replaceMap := V{
 			"name":  "Replace Test",
 			"age":   35,
@@ -2814,7 +2814,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestMapFieldsSupport", func(t *testing.T) {
-		// 使用Fields参数插入部分字段
+		// Insert partial fields using Fields parameter
 		userMap := V{
 			"name":  "Fields Test",
 			"age":   30,
@@ -2830,7 +2830,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected 1 row inserted, got %d", n)
 		}
 
-		// 验证只插入了指定字段
+		// Verify only specified fields were inserted
 		var result V
 		n, err = tbl.Select(&result, Fields("name", "age", "email"), Where("email = ?", "fields@example.com"))
 		if err != nil {
@@ -2851,7 +2851,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestMapUTypeSupport", func(t *testing.T) {
-		// 先插入一条数据
+		// Insert a record first
 		userMap := V{
 			"name":  "U Test",
 			"age":   30,
@@ -2865,7 +2865,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected 1 row inserted, got %d", n)
 		}
 
-		// 使用U类型更新
+		// Update using U type
 		updateMap := V{
 			"age": U("age + 1"),
 		}
@@ -2878,7 +2878,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected at least 1 row updated, got %d", n)
 		}
 
-		// 验证更新结果
+		// Verify update results
 		var result V
 		n, err = tbl.Select(&result, Fields("age"), Where("email = ?", "u@example.com"))
 		if err != nil {
@@ -2893,7 +2893,7 @@ func TestMapSupport(t *testing.T) {
 	})
 
 	t.Run("TestMapComplexQuery", func(t *testing.T) {
-		// 插入测试数据
+		// Insert test data
 		users := []V{
 			{"name": "Complex1", "age": 25, "email": "complex1@example.com"},
 			{"name": "Complex2", "age": 30, "email": "complex2@example.com"},
@@ -2910,7 +2910,7 @@ func TestMapSupport(t *testing.T) {
 			}
 		}
 
-		// 复杂查询：年龄在25-35之间，按年龄排序
+		// Complex query: age between 25-35, ordered by age
 		var results []V
 		n, err := tbl.Select(&results,
 			Fields("name", "age", "email"),
@@ -2931,7 +2931,7 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected non-empty results slice")
 		}
 
-		// 验证结果按年龄排序
+		// Verify results are ordered by age
 		for i := 1; i < len(results); i++ {
 			prevAge := results[i-1]["age"].(int64)
 			currAge := results[i]["age"].(int64)
@@ -2942,16 +2942,16 @@ func TestMapSupport(t *testing.T) {
 	})
 }
 
-// TestMapSupportWithContext 测试带Context的Map支持功能
+// TestMapSupportWithContext tests Map support functionality with Context
 func TestMapSupportWithContext(t *testing.T) {
-	// 初始化数据库连接
+	// Initialize database connection
 	db, err := sql.Open("mysql", "root:semaphoredb@tcp(localhost:3306)/borm_test?charset=utf8mb4")
 	if err != nil {
 		t.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	// 创建测试表
+	// Create test table
 	createTableSQL := `
 	CREATE TABLE IF NOT EXISTS test_map_ctx (
 		id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2965,7 +2965,7 @@ func TestMapSupportWithContext(t *testing.T) {
 		t.Fatalf("Failed to create table: %v", err)
 	}
 
-	// 清理测试数据
+	// Clean up test data
 	defer func() {
 		db.Exec("DELETE FROM test_map_ctx")
 	}()
@@ -2974,7 +2974,7 @@ func TestMapSupportWithContext(t *testing.T) {
 	tbl := TableContext(ctx, db, "test_map_ctx").Debug()
 
 	t.Run("TestMapWithContext", func(t *testing.T) {
-		// 使用V类型插入数据
+		// Insert data using V type
 		userMap := V{
 			"name":  "Context Test",
 			"age":   30,
@@ -2989,7 +2989,7 @@ func TestMapSupportWithContext(t *testing.T) {
 			t.Errorf("Expected 1 row inserted, got %d", n)
 		}
 
-		// 查询数据
+		// Query data
 		var result V
 		n, err = tbl.Select(&result, Fields("name", "age", "email"), Where("email = ?", "context@example.com"))
 		if err != nil {
@@ -3004,11 +3004,11 @@ func TestMapSupportWithContext(t *testing.T) {
 	})
 
 	t.Run("TestTableContextAPI", func(t *testing.T) {
-		// 测试TableContext API
+		// Test TableContext API
 		ctx := context.WithValue(context.Background(), "test_key", "test_value")
 		tbl := TableContext(ctx, db, "test_map_ctx")
 
-		// 验证TableContext创建成功
+		// Verify TableContext was created successfully
 		if tbl == nil {
 			t.Errorf("TableContext should not be nil")
 		}
@@ -3018,9 +3018,9 @@ func TestMapSupportWithContext(t *testing.T) {
 	})
 }
 
-// TestMapSupportErrorHandling 测试Map支持的错误处理
+// TestMapSupportErrorHandling tests error handling for Map support
 func TestMapSupportErrorHandling(t *testing.T) {
-	// 初始化数据库连接
+	// Initialize database connection
 	db, err := sql.Open("mysql", "root:semaphoredb@tcp(localhost:3306)/borm_test?charset=utf8mb4")
 	if err != nil {
 		t.Fatalf("Failed to connect to database: %v", err)
@@ -3056,16 +3056,16 @@ func TestMapSupportErrorHandling(t *testing.T) {
 	})
 }
 
-// BenchmarkMapOperations Map操作的基准测试
+// BenchmarkMapOperations benchmarks Map operations
 func BenchmarkMapOperations(b *testing.B) {
-	// 初始化数据库连接
+	// Initialize database connection
 	db, err := sql.Open("mysql", "root:semaphoredb@tcp(localhost:3306)/borm_test?charset=utf8mb4")
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer db.Close()
 
-	// 创建测试表
+	// Create test table
 	createTableSQL := `
 	CREATE TABLE IF NOT EXISTS test_map_bench (
 		id INT AUTO_INCREMENT PRIMARY KEY,
@@ -3076,7 +3076,7 @@ func BenchmarkMapOperations(b *testing.B) {
 	)`
 	db.Exec(createTableSQL)
 
-	// 清理测试数据
+	// Clean up test data
 	defer func() {
 		db.Exec("DELETE FROM test_map_bench")
 	}()
@@ -3095,7 +3095,7 @@ func BenchmarkMapOperations(b *testing.B) {
 	})
 
 	b.Run("MapSelect", func(b *testing.B) {
-		// 先插入一些测试数据
+		// Insert some test data first
 		for i := 0; i < 100; i++ {
 			userMap := V{
 				"name":  "Benchmark User",
@@ -3113,7 +3113,7 @@ func BenchmarkMapOperations(b *testing.B) {
 	})
 
 	b.Run("MapUpdate", func(b *testing.B) {
-		// 先插入一些测试数据
+		// Insert some test data first
 		for i := 0; i < 100; i++ {
 			userMap := V{
 				"name":  "Benchmark User",
@@ -3133,29 +3133,29 @@ func BenchmarkMapOperations(b *testing.B) {
 	})
 }
 
-// TestReuseFunctionality 测试Reuse功能
+// TestReuseFunctionality tests Reuse functionality
 func TestReuseFunctionality(t *testing.T) {
-	Convey("测试Reuse功能", t, func() {
-		// 测试Reuse方法
+	Convey("Test Reuse functionality", t, func() {
+		// Test Reuse method
 		table := &BormTable{
 			Cfg: Config{},
 		}
 
-		// 验证初始状态
+		// Verify initial state
 		So(table.Cfg.Reuse, ShouldBeFalse)
 
-		// 调用Reuse方法
+		// Call Reuse method
 		result := table.Reuse()
 
-		// 验证Reuse方法返回自身
+		// Verify Reuse method returns itself
 		So(result, ShouldEqual, table)
 		So(table.Cfg.Reuse, ShouldBeTrue)
 	})
 }
 
-// TestFieldMapCache 测试字段映射缓存功能
+// TestFieldMapCache tests field mapping cache functionality
 func TestFieldMapCache(t *testing.T) {
-	Convey("测试字段映射缓存功能", t, func() {
+	Convey("Test field mapping cache functionality", t, func() {
 		type TestStruct struct {
 			ID   int64  `borm:"id"`
 			Name string `borm:"name"`
@@ -3166,14 +3166,14 @@ func TestFieldMapCache(t *testing.T) {
 			Cfg: Config{UseNameWhenTagEmpty: true},
 		}
 
-		// 第一次调用，应该从缓存中获取
+		// First call, should build and cache
 		rt := reflect2.TypeOf(TestStruct{})
 		structType := rt.(reflect2.StructType)
 
-		// 清空缓存
+		// Clear cache
 		table.fieldMapCache = sync.Map{}
 
-		// 第一次调用，应该构建并缓存
+		// First call, should build and cache
 		fieldMap1 := table.getStructFieldMap(structType)
 		So(fieldMap1, ShouldNotBeNil)
 		So(len(fieldMap1), ShouldEqual, 3)
@@ -3181,19 +3181,19 @@ func TestFieldMapCache(t *testing.T) {
 		So(fieldMap1["name"], ShouldNotBeNil)
 		So(fieldMap1["age"], ShouldNotBeNil)
 
-		// 第二次调用，应该从缓存中获取
+		// Second call, should get from cache
 		fieldMap2 := table.getStructFieldMap(structType)
 		So(fieldMap2, ShouldNotBeNil)
 		So(len(fieldMap2), ShouldEqual, 3)
 
-		// 验证是同一个map（缓存生效）
+		// Verify it's the same map (cache is working)
 		So(fieldMap1, ShouldEqual, fieldMap2)
 	})
 }
 
-// TestFieldMapCacheWithDifferentStructs 测试不同结构体的字段缓存
+// TestFieldMapCacheWithDifferentStructs tests field cache for different structs
 func TestFieldMapCacheWithDifferentStructs(t *testing.T) {
-	Convey("测试不同结构体的字段缓存", t, func() {
+	Convey("Test field cache for different structs", t, func() {
 		type Struct1 struct {
 			ID   int64  `borm:"id"`
 			Name string `borm:"name"`
@@ -3208,10 +3208,10 @@ func TestFieldMapCacheWithDifferentStructs(t *testing.T) {
 			Cfg: Config{UseNameWhenTagEmpty: true},
 		}
 
-		// 清空缓存
+		// Clear cache
 		table.fieldMapCache = sync.Map{}
 
-		// 测试Struct1
+		// Test Struct1
 		rt1 := reflect2.TypeOf(Struct1{})
 		structType1 := rt1.(reflect2.StructType)
 		fieldMap1 := table.getStructFieldMap(structType1)
@@ -3221,7 +3221,7 @@ func TestFieldMapCacheWithDifferentStructs(t *testing.T) {
 		So(fieldMap1["name"], ShouldNotBeNil)
 		So(fieldMap1["email"], ShouldBeNil)
 
-		// 测试Struct2
+		// Test Struct2
 		rt2 := reflect2.TypeOf(Struct2{})
 		structType2 := rt2.(reflect2.StructType)
 		fieldMap2 := table.getStructFieldMap(structType2)
@@ -3231,14 +3231,14 @@ func TestFieldMapCacheWithDifferentStructs(t *testing.T) {
 		So(fieldMap2["email"], ShouldNotBeNil)
 		So(fieldMap2["name"], ShouldBeNil)
 
-		// 验证两个结构体的字段映射不同
+		// Verify field mappings are different for the two structs
 		So(fieldMap1, ShouldNotEqual, fieldMap2)
 	})
 }
 
-// TestFieldMapCacheWithEmbeddedStruct 测试embedded struct的字段缓存
+// TestFieldMapCacheWithEmbeddedStruct tests field cache for embedded struct
 func TestFieldMapCacheWithEmbeddedStruct(t *testing.T) {
-	Convey("测试embedded struct的字段缓存", t, func() {
+	Convey("Test field cache for embedded struct", t, func() {
 		type Address struct {
 			Street string `borm:"street"`
 			City   string `borm:"city"`
@@ -3254,7 +3254,7 @@ func TestFieldMapCacheWithEmbeddedStruct(t *testing.T) {
 			Cfg: Config{UseNameWhenTagEmpty: true},
 		}
 
-		// 清空缓存
+		// Clear cache
 		table.fieldMapCache = sync.Map{}
 
 		rt := reflect2.TypeOf(User{})
@@ -3262,18 +3262,18 @@ func TestFieldMapCacheWithEmbeddedStruct(t *testing.T) {
 		fieldMap := table.getStructFieldMap(structType)
 
 		So(fieldMap, ShouldNotBeNil)
-		So(len(fieldMap), ShouldEqual, 2) // 只有id和name，Address有borm:"-"标签
+		So(len(fieldMap), ShouldEqual, 2) // Only id and name, Address has borm:"-" tag
 		So(fieldMap["id"], ShouldNotBeNil)
 		So(fieldMap["name"], ShouldNotBeNil)
-		So(fieldMap["street"], ShouldBeNil) // embedded struct字段不会被收集
+		So(fieldMap["street"], ShouldBeNil) // Embedded struct fields are not collected
 		So(fieldMap["city"], ShouldBeNil)
 	})
 }
 
-// TestDataBindingCache 测试数据绑定缓存
+// TestDataBindingCache tests data binding cache
 func TestDataBindingCache(t *testing.T) {
-	Convey("测试数据绑定缓存", t, func() {
-		// 测试storeToCache
+	Convey("Test data binding cache", t, func() {
+		// Test storeToCache
 		item := &DataBindingItem{
 			SQL:  "SELECT * FROM test",
 			Cols: []interface{}{"id", "name"},
@@ -3283,7 +3283,7 @@ func TestDataBindingCache(t *testing.T) {
 
 		storeToCache("test.go", 123, item)
 
-		// 测试loadFromCache
+		// Test loadFromCache
 		loadedItem := loadFromCache("test.go", 123)
 		So(loadedItem, ShouldNotBeNil)
 		So(loadedItem.SQL, ShouldEqual, "SELECT * FROM test")
@@ -3291,16 +3291,16 @@ func TestDataBindingCache(t *testing.T) {
 		So(loadedItem.Cols[0], ShouldEqual, "id")
 		So(loadedItem.Cols[1], ShouldEqual, "name")
 
-		// 测试不存在的缓存
+		// Test non-existent cache
 		notFoundItem := loadFromCache("test.go", 456)
 		So(notFoundItem, ShouldBeNil)
 	})
 }
 
-// TestReuseCacheKeyGeneration 测试Reuse缓存键生成
+// TestReuseCacheKeyGeneration tests Reuse cache key generation
 func TestReuseCacheKeyGeneration(t *testing.T) {
-	Convey("测试Reuse缓存键生成", t, func() {
-		// 测试缓存键格式
+	Convey("Test Reuse cache key generation", t, func() {
+		// Test cache key format
 		key1 := fmt.Sprintf("%s:%d", "test.go", 123)
 		key2 := fmt.Sprintf("%s:%d", "test.go", 456)
 		key3 := fmt.Sprintf("%s:%d", "other.go", 123)
@@ -3309,16 +3309,16 @@ func TestReuseCacheKeyGeneration(t *testing.T) {
 		So(key2, ShouldEqual, "test.go:456")
 		So(key3, ShouldEqual, "other.go:123")
 
-		// 验证不同的文件或行号生成不同的键
+		// Verify different files or line numbers generate different keys
 		So(key1, ShouldNotEqual, key2)
 		So(key1, ShouldNotEqual, key3)
 		So(key2, ShouldNotEqual, key3)
 	})
 }
 
-// TestConcurrentFieldMapCache 测试并发字段缓存
+// TestConcurrentFieldMapCache tests concurrent field cache
 func TestConcurrentFieldMapCache(t *testing.T) {
-	Convey("测试并发字段缓存", t, func() {
+	Convey("Test concurrent field cache", t, func() {
 		type TestStruct struct {
 			ID   int64  `borm:"id"`
 			Name string `borm:"name"`
@@ -3328,13 +3328,13 @@ func TestConcurrentFieldMapCache(t *testing.T) {
 			Cfg: Config{UseNameWhenTagEmpty: true},
 		}
 
-		// 清空缓存
+		// Clear cache
 		table.fieldMapCache = sync.Map{}
 
 		rt := reflect2.TypeOf(TestStruct{})
 		structType := rt.(reflect2.StructType)
 
-		// 并发调用getStructFieldMap
+		// Concurrently call getStructFieldMap
 		done := make(chan bool, 10)
 		results := make([]map[string]reflect2.StructField, 10)
 
@@ -3345,24 +3345,24 @@ func TestConcurrentFieldMapCache(t *testing.T) {
 			}(i)
 		}
 
-		// 等待所有goroutine完成
+		// Wait for all goroutines to complete
 		for i := 0; i < 10; i++ {
 			<-done
 		}
 
-		// 验证所有结果都相同（缓存一致性）
+		// Verify all results are the same (cache consistency)
 		for i := 1; i < 10; i++ {
 			So(results[i], ShouldEqual, results[0])
 		}
 	})
 }
 
-// TestReusePotentialBugs 测试Reuse功能可能的问题
+// TestReusePotentialBugs tests potential issues with Reuse functionality
 func TestReusePotentialBugs(t *testing.T) {
-	Convey("测试Reuse功能可能的问题", t, func() {
-		// 测试1: 不同调用位置使用相同的缓存键
-		Convey("测试不同调用位置使用相同的缓存键", func() {
-			// 模拟相同的文件名和行号
+	Convey("Test potential issues with Reuse functionality", t, func() {
+		// Test 1: Different call sites using the same cache key
+		Convey("Test different call sites using the same cache key", func() {
+			// Simulate same file name and line number
 			item1 := &DataBindingItem{
 				SQL:  "SELECT * FROM table1",
 				Cols: []interface{}{"id", "name"},
@@ -3373,35 +3373,35 @@ func TestReusePotentialBugs(t *testing.T) {
 				Cols: []interface{}{"id", "email"},
 			}
 
-			// 使用相同的文件位置存储不同的数据
+			// Store different data using the same file location
 			storeToCache("test.go", 100, item1)
-			storeToCache("test.go", 100, item2) // 覆盖了item1
+			storeToCache("test.go", 100, item2) // Overwrites item1
 
-			// 加载缓存
+			// Load cache
 			loadedItem := loadFromCache("test.go", 100)
 			So(loadedItem, ShouldNotBeNil)
-			So(loadedItem.SQL, ShouldEqual, "SELECT * FROM table2") // 应该是item2
-			So(loadedItem.Cols[1], ShouldEqual, "email")            // 应该是email，不是name
+			So(loadedItem.SQL, ShouldEqual, "SELECT * FROM table2") // Should be item2
+			So(loadedItem.Cols[1], ShouldEqual, "email")            // Should be email, not name
 		})
 
-		// 测试2: 缓存键冲突
-		Convey("测试缓存键冲突", func() {
-			// 清空缓存
+		// Test 2: Cache key collision
+		Convey("Test cache key collision", func() {
+			// Clear cache
 			_dataBindingCache = sync.Map{}
 
 			item1 := &DataBindingItem{SQL: "SELECT * FROM users"}
 			item2 := &DataBindingItem{SQL: "SELECT * FROM orders"}
 
-			// 使用可能冲突的键
+			// Use potentially colliding keys
 			storeToCache("file.go", 1, item1)
-			storeToCache("file.go", 1, item2) // 相同键，会覆盖
+			storeToCache("file.go", 1, item2) // Same key, will overwrite
 
 			loadedItem := loadFromCache("file.go", 1)
 			So(loadedItem.SQL, ShouldEqual, "SELECT * FROM orders")
 		})
 
-		// 测试3: 字段缓存与数据绑定缓存的独立性
-		Convey("测试字段缓存与数据绑定缓存的独立性", func() {
+		// Test 3: Independence of field cache and data binding cache
+		Convey("Test independence of field cache and data binding cache", func() {
 			type TestStruct struct {
 				ID   int64  `borm:"id"`
 				Name string `borm:"name"`
@@ -3411,27 +3411,27 @@ func TestReusePotentialBugs(t *testing.T) {
 				Cfg: Config{UseNameWhenTagEmpty: true},
 			}
 
-			// 清空字段缓存
+			// Clear field cache
 			table.fieldMapCache = sync.Map{}
 
 			rt := reflect2.TypeOf(TestStruct{})
 			structType := rt.(reflect2.StructType)
 
-			// 获取字段映射
+			// Get field mapping
 			fieldMap := table.getStructFieldMap(structType)
 			So(fieldMap, ShouldNotBeNil)
 
-			// 字段缓存应该独立于数据绑定缓存
-			// 数据绑定缓存存储的是SQL和参数
-			// 字段缓存存储的是结构体字段映射
+			// Field cache should be independent of data binding cache
+			// Data binding cache stores SQL and parameters
+			// Field cache stores struct field mappings
 			So(len(fieldMap), ShouldEqual, 2)
 		})
 	})
 }
 
-// TestReuseWithDifferentStructs 测试Reuse功能与不同结构体
+// TestReuseWithDifferentStructs tests Reuse functionality with different structs
 func TestReuseWithDifferentStructs(t *testing.T) {
-	Convey("测试Reuse功能与不同结构体", t, func() {
+	Convey("Test Reuse functionality with different structs", t, func() {
 		type Struct1 struct {
 			ID   int64  `borm:"id"`
 			Name string `borm:"name"`
@@ -3446,10 +3446,10 @@ func TestReuseWithDifferentStructs(t *testing.T) {
 			Cfg: Config{UseNameWhenTagEmpty: true},
 		}
 
-		// 清空字段缓存
+		// Clear field cache
 		table.fieldMapCache = sync.Map{}
 
-		// 测试不同结构体的字段缓存
+		// Test field cache for different structs
 		rt1 := reflect2.TypeOf(Struct1{})
 		structType1 := rt1.(reflect2.StructType)
 		fieldMap1 := table.getStructFieldMap(structType1)
@@ -3458,7 +3458,7 @@ func TestReuseWithDifferentStructs(t *testing.T) {
 		structType2 := rt2.(reflect2.StructType)
 		fieldMap2 := table.getStructFieldMap(structType2)
 
-		// 验证不同结构体有不同的字段映射
+		// Verify different structs have different field mappings
 		So(fieldMap1, ShouldNotEqual, fieldMap2)
 		So(len(fieldMap1), ShouldEqual, 2)
 		So(len(fieldMap2), ShouldEqual, 2)
@@ -3469,13 +3469,13 @@ func TestReuseWithDifferentStructs(t *testing.T) {
 	})
 }
 
-// TestReuseCacheMemoryLeak 测试Reuse缓存内存泄漏
+// TestReuseCacheMemoryLeak tests Reuse cache memory leak
 func TestReuseCacheMemoryLeak(t *testing.T) {
-	Convey("测试Reuse缓存内存泄漏", t, func() {
-		// 清空缓存
+	Convey("Test Reuse cache memory leak", t, func() {
+		// Clear cache
 		_dataBindingCache = sync.Map{}
 
-		// 存储大量缓存项
+		// Store many cache items
 		for i := 0; i < 1000; i++ {
 			item := &DataBindingItem{
 				SQL:  fmt.Sprintf("SELECT * FROM table%d", i),
@@ -3484,7 +3484,7 @@ func TestReuseCacheMemoryLeak(t *testing.T) {
 			storeToCache(fmt.Sprintf("file%d.go", i), i, item)
 		}
 
-		// 验证缓存项数量
+		// Verify cache item count
 		count := 0
 		_dataBindingCache.Range(func(key, value interface{}) bool {
 			count++
@@ -3492,39 +3492,39 @@ func TestReuseCacheMemoryLeak(t *testing.T) {
 		})
 		So(count, ShouldEqual, 1000)
 
-		// 测试缓存项访问
+		// Test cache item access
 		item := loadFromCache("file500.go", 500)
 		So(item, ShouldNotBeNil)
 		So(item.SQL, ShouldEqual, "SELECT * FROM table500")
 	})
 }
 
-// TestReuseWithNilValues 测试Reuse功能与nil值
+// TestReuseWithNilValues tests Reuse functionality with nil values
 func TestReuseWithNilValues(t *testing.T) {
-	Convey("测试Reuse功能与nil值", t, func() {
-		// 测试存储nil值
+	Convey("Test Reuse functionality with nil values", t, func() {
+		// Test storing nil value
 		storeToCache("test.go", 1, nil)
 
-		// 加载nil值
+		// Load nil value
 		item := loadFromCache("test.go", 1)
 		So(item, ShouldBeNil)
 
-		// 测试不存在的键
+		// Test non-existent key
 		notFound := loadFromCache("nonexistent.go", 999)
 		So(notFound, ShouldBeNil)
 	})
 }
 
-// TestSelectWithIgnoredField 测试Select时忽略borm:"-"字段
+// TestSelectWithIgnoredField tests ignoring borm:"-" fields in Select
 func TestSelectWithIgnoredField(t *testing.T) {
-	Convey("测试Select时忽略borm:\"-\"字段", t, func() {
+	Convey("Test ignoring borm:\"-\" fields in Select", t, func() {
 		type TestStruct struct {
 			ID   int64  `borm:"id"`
 			Name string `borm:"name"`
-			Pass string `borm:"-"` // 应该被忽略的字段
+			Pass string `borm:"-"` // Field that should be ignored
 		}
 
-		// 创建测试表
+		// Create test table
 		createTableSQL := `
 		CREATE TABLE IF NOT EXISTS test_ignore_field (
 			id INT AUTO_INCREMENT PRIMARY KEY,
@@ -3533,21 +3533,21 @@ func TestSelectWithIgnoredField(t *testing.T) {
 		_, err := db.Exec(createTableSQL)
 		So(err, ShouldBeNil)
 
-		// 清理测试数据
+		// Clean up test data
 		defer func() {
 			db.Exec("DELETE FROM test_ignore_field")
 		}()
 
-		// 插入测试数据
+		// Insert test data
 		tbl := Table(db, "test_ignore_field")
 		_, err = db.Exec("INSERT INTO test_ignore_field (name) VALUES (?)", "test")
 		So(err, ShouldBeNil)
 
-		// 测试Select所有字段（不指定Fields）
-		Convey("Select所有字段时应该忽略borm:\"-\"字段", func() {
+		// Test Select all fields (without specifying Fields)
+		Convey("Should ignore borm:\"-\" fields when selecting all fields", func() {
 			var result TestStruct
 			n, err := tbl.Select(&result, Where("id = ?", 1))
-			
+
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
 			So(result.Name, ShouldEqual, "test")
