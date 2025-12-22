@@ -3,7 +3,7 @@ module github.com/orca-zhang/borm
 go 1.18
 
 require (
-	github.com/go-sql-driver/mysql v1.9.3
+	github.com/go-sql-driver/mysql v1.8.0
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/smartystreets/goconvey v1.8.1
 )
