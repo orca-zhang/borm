@@ -615,14 +615,14 @@ func TestSelectWithIgnoredField(t *testing.T) {
 		}()
 
 		// Insert test data
-		tbl := Table(db, "test_ignore_field")
+		tbl := b.Table(db, "test_ignore_field")
 		_, err = db.Exec("INSERT INTO test_ignore_field (name) VALUES (?)", "test")
 		So(err, ShouldBeNil)
 
 		// Test Select all fields (without specifying Fields)
 		Convey("Select all fields should ignore borm:\"-\" fields", func() {
 			var result TestStruct
-			n, err := tbl.Select(&result, Where("id = ?", 1))
+			n, err := tbl.Select(&result, b.Where("id = ?", 1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
@@ -654,12 +654,12 @@ func TestSelectWithIgnoredField(t *testing.T) {
 				db.Exec("DELETE FROM test_ignore_embedded")
 			}()
 
-			tbl2 := Table(db, "test_ignore_embedded")
+			tbl2 := b.Table(db, "test_ignore_embedded")
 			_, err = db.Exec("INSERT INTO test_ignore_embedded (name) VALUES (?)", "test2")
 			So(err, ShouldBeNil)
 
 			var result TestStructWithEmbedded
-			n, err := tbl2.Select(&result, Where("id = ?", 1))
+			n, err := tbl2.Select(&result, b.Where("id = ?", 1))
 
 			So(err, ShouldBeNil)
 			So(n, ShouldEqual, 1)
