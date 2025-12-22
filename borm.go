@@ -154,6 +154,10 @@ func Where(conds ...interface{}) *whereItem {
 			}
 			w.Conds = append(w.Conds, c)
 		}
+		// If all conditions were filtered out, return empty whereItem instead of panic
+		if len(w.Conds) == 0 {
+			return w
+		}
 		return w
 	}
 	panic("too few conditions")
@@ -183,6 +187,10 @@ func Having(conds ...interface{}) *havingItem {
 				}
 			}
 			h.Conds = append(h.Conds, c)
+		}
+		// If all conditions were filtered out, return empty havingItem instead of panic
+		if len(h.Conds) == 0 {
+			return h
 		}
 		return h
 	}
@@ -909,12 +917,13 @@ func (t *BormTable) insertStruct(objs interface{}, args ...BormItem) (int, error
 				elemPtr := sliceType.UnsafeGetIndex(reflect2.PtrOf(objs), i)
 				t.inputArgs(&stmtArgs, cols, rtPtr, s, isPtrArray, elemPtr)
 			}
+			sb.WriteString(")")
 		} else {
 			// Single insert
 			sb.WriteString(valuesTemplate)
 			t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
+			sb.WriteString(")")
 		}
-		sb.WriteString(")")
 
 		for _, arg := range args {
 			arg.BuildSQL(&sb)
@@ -1248,12 +1257,13 @@ func (t *BormTable) insertStructWithPrefix(prefix string, objs interface{}, args
 				elemPtr := sliceType.UnsafeGetIndex(reflect2.PtrOf(objs), i)
 				t.inputArgs(&stmtArgs, cols, rtPtr, s, isPtrArray, elemPtr)
 			}
+			sb.WriteString(")")
 		} else {
 			// Single insert
 			sb.WriteString(valuesTemplate)
 			t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(objs))
+			sb.WriteString(")")
 		}
-		sb.WriteString(")")
 
 		for _, arg := range args {
 			arg.BuildSQL(&sb)
@@ -1982,7 +1992,6 @@ func (w *forceIndexItem) BuildSQL(sb *strings.Builder) {
 }
 
 func (w *forceIndexItem) BuildArgs(stmtArgs *[]interface{}) {
-	return
 }
 
 type whereItem struct {
@@ -2006,6 +2015,8 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
 		} else if condEx, ok := c.(*ormCondEx); ok {
+			// Only add parentheses for Or type (Ty > _andCondEx) when there are multiple conditions
+			// This prevents double parentheses with nested ormCondEx
 			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(w.Conds) > 1 {
 				sb.WriteString("(")
 			}
@@ -2070,6 +2081,8 @@ func (h *havingItem) BuildSQL(sb *strings.Builder) {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
 		} else if condEx, ok := c.(*ormCondEx); ok {
+			// Only add parentheses for Or type (Ty > _andCondEx) when there are multiple conditions
+			// This prevents double parentheses with nested ormCondEx
 			if condEx.Ty > _andCondEx && len(condEx.Conds) > 1 && len(h.Conds) > 1 {
 				sb.WriteString("(")
 			}
@@ -2504,12 +2517,22 @@ func (cx *ormCondEx) BuildSQL(sb *strings.Builder) {
 			fieldEscape(sb, cond.Field)
 			sb.WriteString(cond.Op)
 		} else if condEx, ok := c.(*ormCondEx); ok {
-			if len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
-				sb.WriteString("(")
+			// Add parentheses for nested ormCondEx when:
+			// 1. Both have more than 1 condition (needs grouping)
+			// 2. The nested condEx is Or type (Ty > _andCondEx) - always needs parentheses when mixed with And
+			// 3. OR when current is Or type and nested is And type - needs parentheses to group And
+			needsParen := len(condEx.Conds) > 1 && len(cx.Conds) > 1
+			if needsParen {
+				// Add parentheses if nested is Or (mixed with current And), or if current is Or and nested is And
+				if condEx.Ty > _andCondEx || (cx.Ty > _andCondEx && condEx.Ty == _andCondEx) {
+					sb.WriteString("(")
+				}
 			}
 			condEx.BuildSQL(sb)
-			if len(condEx.Conds) > 1 && len(cx.Conds) > 1 {
-				sb.WriteString(")")
+			if needsParen {
+				if condEx.Ty > _andCondEx || (cx.Ty > _andCondEx && condEx.Ty == _andCondEx) {
+					sb.WriteString(")")
+				}
 			}
 		}
 	}
@@ -2839,7 +2862,6 @@ func BormMock(tbl, fun, caller, file, pkg string, data interface{}, ret int, err
 		Ret:    ret,
 		Err:    err,
 	})
-	return
 }
 
 // BormMockFinish .
@@ -2850,7 +2872,7 @@ func BormMockFinish() error {
 	mockData := _mockData
 	_mockData = make([]*MockMatcher, 0)
 	if len(mockData) > 0 {
-		return fmt.Errorf("Some of the mock data left behind: %+v", mockData)
+		return fmt.Errorf("some of the mock data left behind: %+v", mockData)
 	}
 	return nil
 }
