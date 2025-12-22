@@ -3512,3 +3512,43 @@ func TestReuseWithNilValues(t *testing.T) {
 		So(notFound, ShouldBeNil)
 	})
 }
+
+// TestSelectWithIgnoredField 测试Select时忽略borm:"-"字段
+func TestSelectWithIgnoredField(t *testing.T) {
+	Convey("测试Select时忽略borm:\"-\"字段", t, func() {
+		type TestStruct struct {
+			ID   int64  `borm:"id"`
+			Name string `borm:"name"`
+			Pass string `borm:"-"` // 应该被忽略的字段
+		}
+
+		// 创建测试表
+		createTableSQL := `
+		CREATE TABLE IF NOT EXISTS test_ignore_field (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			name VARCHAR(100)
+		)`
+		_, err := db.Exec(createTableSQL)
+		So(err, ShouldBeNil)
+
+		// 清理测试数据
+		defer func() {
+			db.Exec("DELETE FROM test_ignore_field")
+		}()
+
+		// 插入测试数据
+		tbl := Table(db, "test_ignore_field")
+		_, err = db.Exec("INSERT INTO test_ignore_field (name) VALUES (?)", "test")
+		So(err, ShouldBeNil)
+
+		// 测试Select所有字段（不指定Fields）
+		Convey("Select所有字段时应该忽略borm:\"-\"字段", func() {
+			var result TestStruct
+			n, err := tbl.Select(&result, Where("id = ?", 1))
+			
+			So(err, ShouldBeNil)
+			So(n, ShouldEqual, 1)
+			So(result.Name, ShouldEqual, "test")
+		})
+	})
+}
