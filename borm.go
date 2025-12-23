@@ -246,9 +246,7 @@ func ForceIndex(idx string) *forceIndexItem {
 
 // Select .
 func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
-	if len(args) <= 0 {
-		return 0, errors.New("argument 2 cannot be omitted")
-	}
+	// Allow Select without any arguments for unconditional queries
 
 	var (
 		rt         = reflect2.TypeOf(res)
@@ -389,7 +387,7 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 	if item != nil {
 		// struct type
 		if rtElem.Kind() == reflect.Struct {
-			if args[0].Type() == _fields {
+			if len(args) > 0 && args[0].Type() == _fields {
 				args = args[1:]
 			}
 			// map type
@@ -397,7 +395,9 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			// TODO
 			// other types
 		} else {
-			args = args[1:]
+			if len(args) > 0 {
+				args = args[1:]
+			}
 		}
 
 		for _, arg := range args {
@@ -419,7 +419,7 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 		if rtElem.Kind() == reflect.Struct {
 			s := rtElem.(reflect2.StructType)
 
-			if args[0].Type() == _fields {
+			if len(args) > 0 && args[0].Type() == _fields {
 				m := t.getStructFieldMap(s)
 
 				for _, field := range args[0].(*fieldsItem).Fields {

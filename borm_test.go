@@ -2469,12 +2469,13 @@ func TestMisc(t *testing.T) {
 	})
 
 	Convey("Select", t, func() {
-		Convey("Select - arg len err", func() {
+		Convey("Select - unconditional query", func() {
 			t := TableContext(context.TODO(), db, "test")
 
-			var o x
-			_, err := t.Select(&o)
-			So(err, ShouldNotBeNil)
+			var o []x
+			n, err := t.Select(&o, Limit(10))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThanOrEqualTo, 0)
 		})
 
 		Convey("Select - arg type err", func() {
@@ -2815,12 +2816,10 @@ func TestMisc(t *testing.T) {
 
 // TestMapSupport tests Map type support functionality
 func TestMapSupport(t *testing.T) {
-	// Initialize database connection
-	db, err := sql.Open("mysql", "root:casaos123@tcp(localhost:3306)/borm_test?charset=utf8mb4")
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
+	// Use the global db connection
+	if db == nil {
+		t.Fatalf("Global database connection is nil")
 	}
-	defer db.Close()
 
 	// Create test table
 	createTableSQL := `
@@ -2831,7 +2830,7 @@ func TestMapSupport(t *testing.T) {
 		email VARCHAR(100),
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`
-	_, err = db.Exec(createTableSQL)
+	_, err := db.Exec(createTableSQL)
 	if err != nil {
 		t.Fatalf("Failed to create table: %v", err)
 	}
@@ -3192,12 +3191,10 @@ func TestMapSupport(t *testing.T) {
 
 // TestMapSupportWithContext tests Map support functionality with Context
 func TestMapSupportWithContext(t *testing.T) {
-	// Initialize database connection
-	db, err := sql.Open("mysql", "root:casaos123@tcp(localhost:3306)/borm_test?charset=utf8mb4")
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
+	// Use the global db connection
+	if db == nil {
+		t.Fatalf("Global database connection is nil")
 	}
-	defer db.Close()
 
 	// Create test table
 	createTableSQL := `
@@ -3208,7 +3205,7 @@ func TestMapSupportWithContext(t *testing.T) {
 		email VARCHAR(100),
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`
-	_, err = db.Exec(createTableSQL)
+	_, err := db.Exec(createTableSQL)
 	if err != nil {
 		t.Fatalf("Failed to create table: %v", err)
 	}
@@ -3268,12 +3265,10 @@ func TestMapSupportWithContext(t *testing.T) {
 
 // TestMapSupportErrorHandling tests error handling for Map support
 func TestMapSupportErrorHandling(t *testing.T) {
-	// Initialize database connection
-	db, err := sql.Open("mysql", "root:casaos123@tcp(localhost:3306)/borm_test?charset=utf8mb4")
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
+	// Use the global db connection
+	if db == nil {
+		t.Fatalf("Global database connection is nil")
 	}
-	defer db.Close()
 
 	tbl := Table(db, "test_map").Debug()
 
@@ -3306,12 +3301,10 @@ func TestMapSupportErrorHandling(t *testing.T) {
 
 // BenchmarkMapOperations benchmarks Map operations
 func BenchmarkMapOperations(b *testing.B) {
-	// Initialize database connection
-	db, err := sql.Open("mysql", "root:casaos123@tcp(localhost:3306)/borm_test?charset=utf8mb4")
-	if err != nil {
-		b.Fatal(err)
+	// Use the global db connection
+	if db == nil {
+		b.Fatal("Global database connection is nil")
 	}
-	defer db.Close()
 
 	// Create test table
 	createTableSQL := `
