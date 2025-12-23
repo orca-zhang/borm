@@ -1566,7 +1566,8 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 func (w *whereItem) BuildArgs(stmtArgs *[]interface{}) {
 	for _, c := range w.Conds {
 		if cond, ok := c.(*ormCond); ok {
-			*stmtArgs = append(*stmtArgs, cond.Args...)
+			// Use ormCond.BuildArgs to handle raw SQL correctly (no params for Field == "")
+			cond.BuildArgs(stmtArgs)
 		} else if condEx, ok := c.(*ormCondEx); ok {
 			condEx.BuildArgs(stmtArgs)
 		}
@@ -2019,6 +2020,8 @@ func (c *ormCond) BuildSQL(sb *strings.Builder) {
 }
 
 func (c *ormCond) BuildArgs(stmtArgs *[]interface{}) {
+	// If Field is empty, it's raw SQL
+	// Raw SQL can have parameters (via ? placeholders), so we still add them
 	*stmtArgs = append(*stmtArgs, c.Args...)
 }
 
