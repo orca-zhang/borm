@@ -592,6 +592,52 @@ func BenchmarkMapOperations(bm *testing.B) {
 }
 
 // TestSelectWithIgnoredField tests that Select ignores fields with borm:"-" tag
+// TestSelectUnconditional tests unconditional queries (without WHERE clause)
+func TestSelectUnconditional(t *testing.T) {
+	Convey("Select unconditional queries", t, func() {
+		tbl := b.Table(db, "test").Debug()
+
+		Convey("Select all records without WHERE clause", func() {
+			var results []x
+			n, err := tbl.Select(&results, b.Limit(10))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThanOrEqualTo, 0)
+			So(n, ShouldBeLessThanOrEqualTo, 10)
+		})
+
+		Convey("Select single record without WHERE clause", func() {
+			var result x
+			n, err := tbl.Select(&result, b.Limit(1))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThanOrEqualTo, 0)
+			So(n, ShouldBeLessThanOrEqualTo, 1)
+		})
+
+		Convey("Select with OrderBy and Limit without WHERE", func() {
+			var results []x
+			n, err := tbl.Select(&results, b.OrderBy("id"), b.Limit(5))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThanOrEqualTo, 0)
+			So(n, ShouldBeLessThanOrEqualTo, 5)
+		})
+
+		Convey("Select with Fields and Limit without WHERE", func() {
+			var results []x
+			n, err := tbl.Select(&results, b.Fields("name", "age"), b.Limit(3))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThanOrEqualTo, 0)
+			So(n, ShouldBeLessThanOrEqualTo, 3)
+		})
+
+		Convey("Select completely unconditional (no arguments)", func() {
+			var results []x
+			n, err := tbl.Select(&results)
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThanOrEqualTo, 0)
+		})
+	})
+}
+
 func TestSelectWithIgnoredField(t *testing.T) {
 	Convey("Select should ignore fields with borm:\"-\" tag", t, func() {
 		type TestStruct struct {
