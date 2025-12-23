@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	_fields = 1 >> iota
+	_fields = 1 << iota
 	_join
 	_where
 	_groupBy
@@ -1184,7 +1184,7 @@ func (t *BormTable) insertMapSliceWithPrefix(prefix string, objs interface{}, ar
 	// For []V, elements are already V type, so we can directly access them
 	sliceVal := reflect2.PtrOf(objs)
 	firstElemPtr := sliceType.UnsafeGetIndex(sliceVal, 0)
-	
+
 	// For []V, the element type is V (map[string]interface{})
 	// We need to convert the unsafe pointer to V
 	// Since V is map[string]interface{}, we can use type assertion
@@ -2289,12 +2289,8 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 func (w *whereItem) BuildArgs(stmtArgs *[]interface{}) {
 	for _, c := range w.Conds {
 		if cond, ok := c.(*ormCond); ok {
-			// If Field is empty, it's raw SQL
-			// If Args is empty, no parameters needed; otherwise add them
-			if cond.Field == "" && len(cond.Args) == 0 {
-				continue
-			}
-			*stmtArgs = append(*stmtArgs, cond.Args...)
+			// Use ormCond.BuildArgs to handle parameters correctly
+			cond.BuildArgs(stmtArgs)
 		} else if condEx, ok := c.(*ormCondEx); ok {
 			condEx.BuildArgs(stmtArgs)
 		}
@@ -2759,6 +2755,25 @@ type ormCond struct {
 	Args  []interface{}
 }
 
+func (c *ormCond) Type() int {
+	return _andCondEx
+}
+
+func (c *ormCond) BuildSQL(sb *strings.Builder) {
+	// If Field is empty, treat Op as a complete raw SQL condition (no field escaping)
+	if c.Field == "" {
+		sb.WriteString(c.Op)
+	} else {
+		fieldEscape(sb, c.Field)
+		sb.WriteString(c.Op)
+	}
+}
+
+func (c *ormCond) BuildArgs(stmtArgs *[]interface{}) {
+	// Raw SQL can have parameters (via ? placeholders), so we add them
+	*stmtArgs = append(*stmtArgs, c.Args...)
+}
+
 type ormCondEx struct {
 	Ty    int
 	Conds []interface{}
@@ -2779,8 +2794,8 @@ func (cx *ormCondEx) BuildSQL(sb *strings.Builder) {
 			}
 		}
 		if cond, ok := c.(*ormCond); ok {
-			fieldEscape(sb, cond.Field)
-			sb.WriteString(cond.Op)
+			// Use ormCond.BuildSQL to handle raw SQL correctly
+			cond.BuildSQL(sb)
 		} else if condEx, ok := c.(*ormCondEx); ok {
 			// Add parentheses for nested ormCondEx when:
 			// 1. Both have more than 1 condition (needs grouping)
