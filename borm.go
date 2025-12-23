@@ -400,7 +400,32 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 			}
 		}
 
+		// Merge multiple Where clauses into one for cached path
+		var mergedWhere *whereItem
+		var mergedArgs []BormItem
 		for _, arg := range args {
+			if arg.Type() == _where {
+				if w, ok := arg.(*whereItem); ok {
+					if mergedWhere == nil {
+						mergedWhere = w
+					} else {
+						// Merge conditions from the new Where into the existing one
+						mergedWhere.Conds = append(mergedWhere.Conds, w.Conds...)
+					}
+				}
+			} else {
+				mergedArgs = append(mergedArgs, arg)
+			}
+		}
+		// Add merged Where clause first if it exists
+		if mergedWhere != nil {
+			mergedArgs = append([]BormItem{mergedWhere}, mergedArgs...)
+		} else {
+			// No Where clause to merge, use original args
+			mergedArgs = args
+		}
+
+		for _, arg := range mergedArgs {
 			arg.BuildArgs(&stmtArgs)
 		}
 	} else {
@@ -490,7 +515,32 @@ func (t *BormTable) Select(res interface{}, args ...BormItem) (int, error) {
 
 		fieldEscape(&sb, t.Name)
 
+		// Merge multiple Where clauses into one
+		var mergedWhere *whereItem
+		var mergedArgs []BormItem
 		for _, arg := range args {
+			if arg.Type() == _where {
+				if w, ok := arg.(*whereItem); ok {
+					if mergedWhere == nil {
+						mergedWhere = w
+					} else {
+						// Merge conditions from the new Where into the existing one
+						mergedWhere.Conds = append(mergedWhere.Conds, w.Conds...)
+					}
+				}
+			} else {
+				mergedArgs = append(mergedArgs, arg)
+			}
+		}
+		// Add merged Where clause first if it exists
+		if mergedWhere != nil {
+			mergedArgs = append([]BormItem{mergedWhere}, mergedArgs...)
+		} else {
+			// No Where clause to merge, use original args
+			mergedArgs = args
+		}
+
+		for _, arg := range mergedArgs {
 			arg.BuildSQL(&sb)
 			arg.BuildArgs(&stmtArgs)
 		}
@@ -2208,14 +2258,20 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 	if len(w.Conds) <= 0 {
 		return
 	}
+
 	sb.WriteString(" where ")
 	for i, c := range w.Conds {
 		if i > 0 {
 			sb.WriteString(" and ")
 		}
 		if cond, ok := c.(*ormCond); ok {
-			fieldEscape(sb, cond.Field)
-			sb.WriteString(cond.Op)
+			// If Field is empty, treat Op as a complete raw SQL condition (no field escaping, no parameters)
+			if cond.Field == "" {
+				sb.WriteString(cond.Op)
+			} else {
+				fieldEscape(sb, cond.Field)
+				sb.WriteString(cond.Op)
+			}
 		} else if condEx, ok := c.(*ormCondEx); ok {
 			// Only add parentheses for Or type (Ty > _andCondEx) when there are multiple conditions
 			// This prevents double parentheses with nested ormCondEx
@@ -2233,6 +2289,11 @@ func (w *whereItem) BuildSQL(sb *strings.Builder) {
 func (w *whereItem) BuildArgs(stmtArgs *[]interface{}) {
 	for _, c := range w.Conds {
 		if cond, ok := c.(*ormCond); ok {
+			// If Field is empty, it's raw SQL
+			// If Args is empty, no parameters needed; otherwise add them
+			if cond.Field == "" && len(cond.Args) == 0 {
+				continue
+			}
 			*stmtArgs = append(*stmtArgs, cond.Args...)
 		} else if condEx, ok := c.(*ormCondEx); ok {
 			condEx.BuildArgs(stmtArgs)

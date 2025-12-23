@@ -2478,6 +2478,26 @@ func TestMisc(t *testing.T) {
 			So(n, ShouldBeGreaterThanOrEqualTo, 0)
 		})
 
+		Convey("Select - Where(\"1=1\")", func() {
+			t := TableContext(context.TODO(), db, "test").Debug()
+
+			var o []x
+			n, err := t.Select(&o, Where("1=1"), Limit(5))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThanOrEqualTo, 0)
+			So(n, ShouldBeLessThanOrEqualTo, 5)
+		})
+
+		Convey("Select - Where(\"1=1\") with additional conditions", func() {
+			t := TableContext(context.TODO(), db, "test").Debug()
+
+			var o []x
+			n, err := t.Select(&o, Where("1=1"), Where("id >= ?", 1), Limit(3))
+			So(err, ShouldBeNil)
+			So(n, ShouldBeGreaterThanOrEqualTo, 0)
+			So(n, ShouldBeLessThanOrEqualTo, 3)
+		})
+
 		Convey("Select - arg type err", func() {
 			t := TableContext(context.TODO(), db, "test")
 
