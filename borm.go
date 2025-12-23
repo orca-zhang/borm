@@ -2621,9 +2621,10 @@ func (dest *scanner) Scan(src interface{}) error {
 		// Check if ptrVal is nil to avoid panic
 		if ptrVal == nil && dk == reflect.Ptr {
 			// For pointer types, set to nil
-			ptrType := dt.(reflect2.PtrType)
+			// dest.Val points to a pointer variable, we need to set that pointer variable to nil
 			var nilPtr unsafe.Pointer
-			ptrType.UnsafeSet(dest.Val, nilPtr)
+			// Copy nil pointer value to the location pointed by dest.Val
+			*(*unsafe.Pointer)(dest.Val) = nilPtr
 		} else {
 			dt.UnsafeSet(dest.Val, ptrVal)
 		}
