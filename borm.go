@@ -560,8 +560,36 @@ func (t *BormTable) InsertIgnore(objs interface{}, args ...BormItem) (int, error
 		return t.insertMapWithPrefix("insert ignore into ", m, args...)
 	}
 
-	// Check if it's a generic map type
+	// Check if it's []V type (slice of V)
+	// Try to convert to *[]V first
+	if _, ok := objs.(*[]V); ok {
+		return t.insertMapSliceWithPrefix("insert ignore into ", objs, args...)
+	}
+	// Also check for []interface{} that might contain V
 	rt := reflect2.TypeOf(objs)
+	if rt.Kind() == reflect.Ptr {
+		rtElem := rt.(reflect2.PtrType).Elem()
+		if rtElem.Kind() == reflect.Slice {
+			sliceType := rtElem.(reflect2.SliceType)
+			length := sliceType.UnsafeLengthOf(reflect2.PtrOf(objs))
+			if length > 0 {
+				// Check first element to see if it's V type
+				firstElemPtr := sliceType.UnsafeGetIndex(reflect2.PtrOf(objs), 0)
+				// Use reflect2 to get the element value
+				elemType := sliceType.Elem()
+				if elemType.Kind() == reflect.Interface {
+					// For []interface{}, check the actual value
+					var firstElem interface{}
+					*(*unsafe.Pointer)(unsafe.Pointer(&firstElem)) = firstElemPtr
+					if _, ok := firstElem.(V); ok {
+						return t.insertMapSliceWithPrefix("insert ignore into ", objs, args...)
+					}
+				}
+			}
+		}
+	}
+
+	// Check if it's a generic map type
 	if rt.Kind() == reflect.Map {
 		mapType := rt.(reflect2.MapType)
 		if mapType.Key().Kind() != reflect.String {
@@ -616,8 +644,36 @@ func (t *BormTable) Insert(objs interface{}, args ...BormItem) (int, error) {
 		return t.insertMap(m, args...)
 	}
 
-	// Check if it's a generic map type
+	// Check if it's []V type (slice of V)
+	// Try to convert to *[]V first
+	if _, ok := objs.(*[]V); ok {
+		return t.insertMapSlice(objs, args...)
+	}
+	// Also check for []interface{} that might contain V
 	rt := reflect2.TypeOf(objs)
+	if rt.Kind() == reflect.Ptr {
+		rtElem := rt.(reflect2.PtrType).Elem()
+		if rtElem.Kind() == reflect.Slice {
+			sliceType := rtElem.(reflect2.SliceType)
+			length := sliceType.UnsafeLengthOf(reflect2.PtrOf(objs))
+			if length > 0 {
+				// Check first element to see if it's V type
+				firstElemPtr := sliceType.UnsafeGetIndex(reflect2.PtrOf(objs), 0)
+				// Use reflect2 to get the element value
+				elemType := sliceType.Elem()
+				if elemType.Kind() == reflect.Interface {
+					// For []interface{}, check the actual value
+					var firstElem interface{}
+					*(*unsafe.Pointer)(unsafe.Pointer(&firstElem)) = firstElemPtr
+					if _, ok := firstElem.(V); ok {
+						return t.insertMapSlice(objs, args...)
+					}
+				}
+			}
+		}
+	}
+
+	// Check if it's a generic map type
 	if rt.Kind() == reflect.Map {
 		mapType := rt.(reflect2.MapType)
 		if mapType.Key().Kind() != reflect.String {
@@ -1029,6 +1085,150 @@ func (t *BormTable) insertMapWithPrefix(prefix string, m V, args ...BormItem) (i
 		}
 	}
 	sb.WriteString(")")
+
+	// Build other conditions
+	for _, arg := range args {
+		arg.BuildSQL(&sb)
+		arg.BuildArgs(&stmtArgs)
+	}
+
+	sqlStr := sb.String()
+	if t.Cfg.Debug {
+		log.Printf("%s %v", sqlStr, stmtArgs)
+	}
+
+	result, err := t.DB.ExecContext(t.ctx, sqlStr, stmtArgs...)
+	if err != nil {
+		return 0, err
+	}
+
+	affected, err := result.RowsAffected()
+	return int(affected), err
+}
+
+// insertMapSlice handles insertion of []V type (slice of V)
+func (t *BormTable) insertMapSlice(objs interface{}, args ...BormItem) (int, error) {
+	return t.insertMapSliceWithPrefix("insert into ", objs, args...)
+}
+
+// insertMapSliceWithPrefix handles insertion of []V type (slice of V), supports prefix
+func (t *BormTable) insertMapSliceWithPrefix(prefix string, objs interface{}, args ...BormItem) (int, error) {
+	rt := reflect2.TypeOf(objs)
+	if rt.Kind() != reflect.Ptr {
+		return 0, errors.New("argument should be ptr to slice")
+	}
+
+	rtElem := rt.(reflect2.PtrType).Elem()
+	if rtElem.Kind() != reflect.Slice {
+		return 0, errors.New("argument should be ptr to slice")
+	}
+
+	sliceType := rtElem.(reflect2.SliceType)
+	length := sliceType.UnsafeLengthOf(reflect2.PtrOf(objs))
+
+	if length == 0 {
+		return 0, errors.New("empty slice: no data to insert")
+	}
+
+	// Get the first element to determine fields
+	// For []V, elements are already V type, so we can directly access them
+	sliceVal := reflect2.PtrOf(objs)
+	firstElemPtr := sliceType.UnsafeGetIndex(sliceVal, 0)
+	
+	// For []V, the element type is V (map[string]interface{})
+	// We need to convert the unsafe pointer to V
+	// Since V is map[string]interface{}, we can use type assertion
+	var firstMap V
+	if elemType := sliceType.Elem(); elemType.Kind() == reflect.Interface {
+		// For []interface{}, need to extract the value
+		var firstElem interface{}
+		*(*unsafe.Pointer)(unsafe.Pointer(&firstElem)) = firstElemPtr
+		var ok bool
+		firstMap, ok = firstElem.(V)
+		if !ok {
+			return 0, errors.New("slice elements must be of type V (map[string]interface{})")
+		}
+	} else {
+		// Direct type assertion for []V
+		firstMap = *(*V)(firstElemPtr)
+	}
+
+	var sb strings.Builder
+	var stmtArgs []interface{}
+
+	sb.WriteString(prefix)
+	fieldEscape(&sb, t.Name)
+	sb.WriteString(" (")
+
+	// Check if there are Fields parameters
+	hasFields := len(args) > 0 && args[0].Type() == _fields
+	var fieldsToProcess []string
+
+	if hasFields {
+		fi := args[0].(*fieldsItem)
+		fieldsToProcess = fi.Fields
+		args = args[1:] // Remove Fields parameter
+	} else {
+		// Process all map fields from first element
+		for k, v := range firstMap {
+			if v != nil {
+				fieldsToProcess = append(fieldsToProcess, k)
+			}
+		}
+		// Check empty map
+		if len(fieldsToProcess) == 0 {
+			return 0, errors.New("empty map: no fields to insert")
+		}
+	}
+
+	// Build field list
+	for i, field := range fieldsToProcess {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		fieldEscape(&sb, field)
+	}
+
+	sb.WriteString(") values ")
+
+	// Build VALUES section for all elements
+	for i := 0; i < length; i++ {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		sb.WriteString("(")
+
+		elemPtr := sliceType.UnsafeGetIndex(sliceVal, i)
+		// For []V, elements are already V type
+		var m V
+		if elemType := sliceType.Elem(); elemType.Kind() == reflect.Interface {
+			// For []interface{}, need to extract the value
+			var elem interface{}
+			*(*unsafe.Pointer)(unsafe.Pointer(&elem)) = elemPtr
+			var ok bool
+			m, ok = elem.(V)
+			if !ok {
+				return 0, errors.New("slice elements must be of type V (map[string]interface{})")
+			}
+		} else {
+			// Direct type conversion for []V
+			m = *(*V)(elemPtr)
+		}
+
+		for j, field := range fieldsToProcess {
+			if j > 0 {
+				sb.WriteString(",")
+			}
+			v := m[field]
+			if s, ok := v.(U); ok {
+				sb.WriteString(string(s))
+			} else {
+				sb.WriteString("?")
+				stmtArgs = append(stmtArgs, v)
+			}
+		}
+		sb.WriteString(")")
+	}
 
 	// Build other conditions
 	for _, arg := range args {
@@ -1504,8 +1704,10 @@ func (t *BormTable) updateStruct(obj interface{}, args ...BormItem) (int, error)
 		sb.WriteString(" set ")
 
 		rt := reflect2.TypeOf(obj)
+		var rtPtr reflect2.Type
 		switch rt.Kind() {
 		case reflect.Ptr:
+			rtPtr = rt
 			rt = rt.(reflect2.PtrType).Elem()
 		default:
 			return 0, errors.New("argument 2 should be map or ptr")
@@ -1564,7 +1766,7 @@ func (t *BormTable) updateStruct(obj interface{}, args ...BormItem) (int, error)
 			}
 		}
 
-		t.inputArgs(&stmtArgs, cols, rt, s, false, reflect2.PtrOf(obj))
+		t.inputArgs(&stmtArgs, cols, rtPtr, s, false, reflect2.PtrOf(obj))
 
 		for _, arg := range args {
 			arg.BuildSQL(&sb)
@@ -2395,10 +2597,11 @@ func (dest *scanner) Scan(src interface{}) error {
 		if dt.Kind() == reflect.Ptr {
 			// Set to nil directly through pointer dereference
 			// dest.Val points to a pointer variable, we need to set that pointer variable to nil
-			ptrType := dt.(reflect2.PtrType)
-			// Create an unsafe.Pointer of nil pointer
+			// dest.Val is the address of the pointer variable itself
+			// We need to set the value that dest.Val points to (the pointer) to nil
 			var nilPtr unsafe.Pointer
-			ptrType.UnsafeSet(dest.Val, nilPtr)
+			// Copy nil pointer value to the location pointed by dest.Val
+			*(*unsafe.Pointer)(dest.Val) = nilPtr
 		} else {
 			// Set to default value
 			dt.UnsafeSet(dest.Val, dt.UnsafeNew())
@@ -2626,8 +2829,9 @@ RETRY:
 			args = argsAux
 			goto RETRY
 		} else {
-			// In Reuse mode, single value also uses In to maintain consistency
-			// This avoids cache inconsistency issues, and the performance difference is minimal
+			// Always use IN syntax, even for single value, to maintain consistency
+			// This ensures cache consistency in Reuse mode and avoids SQL shape variations
+			// The performance difference between IN (?) and = ? is minimal
 			var sb strings.Builder
 			sb.WriteString(" in (?)")
 			return &ormCond{Field: field, Op: sb.String(), Args: args}

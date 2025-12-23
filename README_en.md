@@ -457,7 +457,7 @@ Option usage example:
 |Between|Between("id", start, end)|Three parameters, between start and end|
 |Like|Like("name", "x%")|Two parameters, name like "x%"|
 |GLOB|GLOB("name", "?x*")|Two parameters, name glob "?x*"|
-|Multiple value selection|In("id", ids)|Two parameters, ids is basic type slice, unified use of in (?) format for cache consistency|
+|Multiple value selection|In("id", ids)|Two parameters, ids is basic type slice.|
 
 ### GroupBy
 
@@ -622,7 +622,6 @@ ReuseOn_Mixed: 202.7 ns/op    48 B/op     4 allocs/op
 - **String building optimization**: Use `sync.Pool` to reuse `strings.Builder`
 - **Cache key pre-computation**: Avoid repeated string concatenation
 - **Zero allocation design**: Complete zero memory allocation on cache hit
-- **In function optimization**: Unified use of `in (?)` format, avoiding cache inconsistency issues
 
 ## Time Parsing Optimization
 - **Before optimization**: Using loop to try multiple time formats
