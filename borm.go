@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	_fields = 1 >> iota
+	_fields = 1 << iota
 	_join
 	_indexedBy
 	_where
