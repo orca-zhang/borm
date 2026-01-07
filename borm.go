@@ -228,38 +228,34 @@ func Limit(i ...interface{}) *limitItem {
 	panic("too few or too many limit params")
 }
 
-// OnConflictDoUpdateSet .
-func OnConflictDoUpdateSet(fields []string, keyVals V) *onConflictDoUpdateSetItem {
+// OnConflictDoUpdateSet uses excluded. prefix to reference conflicting row values.
+// Example: OnConflictDoUpdateSet([]string{"id"}, []string{"name", "age"})
+// generates: ON CONFLICT(id) DO UPDATE SET name=excluded.name, age=excluded.age
+func OnConflictDoUpdateSet(conflictFields []string, updateFields []string) *onConflictDoUpdateSetItem {
 	res := &onConflictDoUpdateSetItem{}
-	if len(keyVals) <= 0 {
+	if len(updateFields) <= 0 {
 		return res
 	}
 
 	var sb strings.Builder
 	sb.WriteString(" on conflict(")
-	for i, field := range fields {
+	for i, field := range conflictFields {
 		if i > 0 {
 			sb.WriteString(",")
 		}
 		fieldEscape(&sb, field)
 	}
-	sb.WriteString(") do update set")
-	argCnt := 0
-	for k, v := range keyVals {
-		if argCnt > 0 {
+	sb.WriteString(") do update set ")
+	for i, field := range updateFields {
+		if i > 0 {
 			sb.WriteString(",")
 		}
-		fieldEscape(&sb, k)
-		if s, ok := v.(U); ok {
-			sb.WriteString("=")
-			sb.WriteString(string(s))
-		} else {
-			sb.WriteString("=?")
-			res.Vals = append(res.Vals, v)
-		}
-		argCnt++
+		fieldEscape(&sb, field)
+		sb.WriteString("=excluded.")
+		fieldEscape(&sb, field)
 	}
 	res.Conds = sb.String()
+	res.Vals = nil // No parameters needed when using excluded. prefix
 	return res
 }
 

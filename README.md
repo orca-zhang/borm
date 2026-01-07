@@ -218,10 +218,7 @@
 
    // 解决主键冲突
    n, err = t.Insert(&o, b.Fields("name", "tag"),
-      b.OnConflictDoUpdateSet([]string{"id"}, b.V{
-         "name": "new_name",
-         "age":  b.U("age+1"), // 使用b.U来处理非变量更新
-      }))
+      b.OnConflictDoUpdateSet([]string{"id"}, []string{"name", "age"}))
 
    // 使用map插入（无需定义struct）
    userMap := b.V{
@@ -521,7 +518,7 @@
 
 |示例|说明|
 |-|-|
-|OnConflictDoUpdateSet([]string{"id"}, V{"name": "new"})|解决主键冲突的更新|
+|OnConflictDoUpdateSet([]string{"id"}, []string{"name", "age"})|解决主键冲突的更新（使用 excluded. 前缀）|
 
 ### Map类型支持
 

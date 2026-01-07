@@ -209,10 +209,7 @@
 
    // Resolve primary key conflicts
    n, err = t.Insert(&o, b.Fields("name", "tag"),
-      b.OnConflictDoUpdateSet([]string{"id"}, b.V{
-         "name": "new_name",
-         "age":  b.U("age+1"), // Use b.U to handle non-variable updates
-      }))
+      b.OnConflictDoUpdateSet([]string{"id"}, []string{"name", "age"}))
 
    // Use map insert (no need to define struct)
    userMap := b.V{
@@ -512,7 +509,7 @@ Option usage example:
 
 |Example|Description|
 |-|-|
-|OnConflictDoUpdateSet([]string{"id"}, V{"name": "new"})|Update to resolve primary key conflicts|
+|OnConflictDoUpdateSet([]string{"id"}, []string{"name", "age"})|Update to resolve primary key conflicts (using excluded. prefix)|
 
 ### Map Type Support
 

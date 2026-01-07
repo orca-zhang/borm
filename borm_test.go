@@ -419,6 +419,79 @@ func TestMapSupport(t *testing.T) {
 			t.Errorf("Expected age 31, got %v", result["age"])
 		}
 	})
+
+	t.Run("TestOnConflictDoUpdateSet", func(t *testing.T) {
+		// 创建测试表（SQLite 支持 ON CONFLICT）
+		createTableSQL := `
+		CREATE TABLE IF NOT EXISTS test_conflict (
+			id INTEGER PRIMARY KEY,
+			name TEXT,
+			age INTEGER,
+			email TEXT UNIQUE
+		)`
+		_, err := db.Exec(createTableSQL)
+		if err != nil {
+			t.Fatalf("Failed to create table: %v", err)
+		}
+
+		// 清理测试数据
+		defer func() {
+			db.Exec("DELETE FROM test_conflict")
+		}()
+
+		tblConflict := b.Table(db, "test_conflict").Debug()
+
+		// 第一次插入
+		userMap1 := b.V{
+			"id":    1,
+			"name":  "Alice",
+			"age":   20,
+			"email": "alice@example.com",
+		}
+		n, err := tblConflict.Insert(userMap1)
+		if err != nil {
+			t.Errorf("First insert failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row inserted, got %d", n)
+		}
+
+		// 使用 OnConflictDoUpdateSet 插入冲突数据
+		userMap2 := b.V{
+			"id":    1,
+			"name":  "Bob",
+			"age":   25,
+			"email": "bob@example.com",
+		}
+		n, err = tblConflict.Insert(userMap2,
+			b.Fields("id", "name", "age", "email"),
+			b.OnConflictDoUpdateSet([]string{"id"}, []string{"name", "age", "email"}))
+		if err != nil {
+			t.Errorf("Insert with OnConflictDoUpdateSet failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row affected, got %d", n)
+		}
+
+		// 验证更新结果
+		var result b.V
+		n, err = tblConflict.Select(&result, b.Fields("id", "name", "age", "email"), b.Where("id = ?", 1))
+		if err != nil {
+			t.Errorf("Select failed: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Expected 1 row selected, got %d", n)
+		}
+		if result["name"] != "Bob" {
+			t.Errorf("Expected name 'Bob', got %v", result["name"])
+		}
+		if result["age"] != int64(25) {
+			t.Errorf("Expected age 25, got %v", result["age"])
+		}
+		if result["email"] != "bob@example.com" {
+			t.Errorf("Expected email 'bob@example.com', got %v", result["email"])
+		}
+	})
 }
 
 // TestMapSupportWithContext 测试带Context的Map支持功能

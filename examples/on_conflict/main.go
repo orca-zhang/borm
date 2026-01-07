@@ -30,8 +30,5 @@ func main() {
 	_, _ = t.Insert(&u, b.Fields("id", "name", "age"))
 
 	u2 := User{ID: 1, Name: "alice2", Age: 21}
-	_, _ = t.Insert(&u2, b.Fields("id", "name", "age"), b.OnConflictDoUpdateSet([]string{"id"}, b.V{
-		"name": "alice2",
-		"age":  b.U("age+1"),
-	}))
+	_, _ = t.Insert(&u2, b.Fields("id", "name", "age"), b.OnConflictDoUpdateSet([]string{"id"}, []string{"name", "age"}))
 }
